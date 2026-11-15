@@ -1,26 +1,91 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
 :root {
+  --radius: 0.875rem;
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #142019;
+  --muted: #f4f7f3;
+  --muted-foreground: #5c6b62;
+  --card: #ffffff;
+  --card-foreground: #142019;
+  --border: #e3e9e2;
+  --input: #d7e0d6;
+  --primary: #1b4332;          /* deep forest green */
+  --primary-hover: #143326;
+  --primary-foreground: #ffffff;
+  --secondary: #e8efe5;        /* soft sage */
+  --secondary-foreground: #1b4332;
+  --accent: #95b48a;           /* sage accent */
+  --accent-soft: #f1f6ee;
+  --ring: #2d6a4f;
+  --success: #2d6a4f;
+  --success-soft: #e3f1e8;
+  --warning: #9a6b00;
+  --warning-soft: #fdf3dc;
+  --danger: #b42318;
+  --danger-soft: #fdecea;
+  --info: #1f5f8b;
+  --info-soft: #e6f0f8;
+  --chart-1: #1b4332;
+  --chart-2: #52796f;
+  --chart-3: #95b48a;
+  --chart-4: #c9a227;
+  --chart-5: #84a59d;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "tnum" 1, "cv11" 1;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
 }
