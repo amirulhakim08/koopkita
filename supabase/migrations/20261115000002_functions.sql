@@ -99,7 +99,6 @@ $$;
 create or replace function app_private.require_admin()
 returns uuid
 language plpgsql
-stable
 security definer
 set search_path = ''
 as $$
@@ -123,7 +122,6 @@ $$;
 create or replace function app_private.require_active_member()
 returns uuid
 language plpgsql
-stable
 security definer
 set search_path = ''
 as $$
@@ -218,7 +216,6 @@ as $$ select 'RM' || to_char(p_sen / 100.0, 'FM999G999G990D00') $$;
 create or replace function app_private.check_own_path(p_path text)
 returns void
 language plpgsql
-stable
 set search_path = ''
 as $$
 begin
@@ -825,7 +822,6 @@ declare
   v_campaign public.campaigns%rowtype;
   v_next integer;
   v_cattle_id uuid;
-  i integer;
 begin
   if p_count is null or p_count < 1 or p_count > 200 then
     perform app_private.err('VALIDATION', 'Bilangan lembu mesti antara 1 hingga 200.');
@@ -1917,7 +1913,6 @@ select c.id as campaign_id,
 create or replace function public.admin_dashboard_stats()
 returns jsonb
 language plpgsql
-stable
 security definer
 set search_path = ''
 as $$
@@ -1978,7 +1973,6 @@ $$;
 create or replace function public.member_dashboard_stats()
 returns jsonb
 language plpgsql
-stable
 security definer
 set search_path = ''
 as $$
