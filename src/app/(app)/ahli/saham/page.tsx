@@ -53,6 +53,7 @@ export default async function SharesPage() {
             <BankDetails bank={bank} />
             <ActionForm action={submitSharePaymentAction} className="space-y-4" resetOnSuccess>
               <IdempotencyKey />
+              <ReceiptUpload userId={userId} autofill={{ amount: "amount", date: "payment_date", reference: "transaction_ref" }} />
               <FormField label="Jumlah (RM)" htmlFor="amount" required>
                 <Input id="amount" name="amount" inputMode="decimal" placeholder="100.00" />
               </FormField>
@@ -62,7 +63,6 @@ export default async function SharesPage() {
               <FormField label="Rujukan transaksi bank" htmlFor="transaction_ref" required>
                 <Input id="transaction_ref" name="transaction_ref" placeholder="cth. MBB123456789" />
               </FormField>
-              <ReceiptUpload userId={userId} />
               <SubmitButton className="w-full">Hantar untuk semakan</SubmitButton>
             </ActionForm>
           </CardContent>

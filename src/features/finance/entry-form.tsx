@@ -28,6 +28,7 @@ export function CoopEntryForm({ adminId }: { adminId: string }) {
       <ActionForm key={direction} action={recordCoopEntryAction} className="space-y-4" resetOnSuccess>
         <IdempotencyKey />
         <input type="hidden" name="direction" value={direction} />
+        <ReceiptUpload userId={adminId} bucket="payout-proofs" name="proof_path" label="Bukti / resit (pilihan)" required={false} autofill={{ amount: "amount", date: "entry_date", reference: "reference" }} />
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField label="Kategori" htmlFor="category" required>
             <Select id="category" name="category" defaultValue="">
@@ -52,7 +53,6 @@ export function CoopEntryForm({ adminId }: { adminId: string }) {
           <Textarea id="description" name="description" rows={2} maxLength={500} />
         </FormField>
         <FormField label="Rujukan bank / resit (pilihan)" htmlFor="reference"><Input id="reference" name="reference" maxLength={100} /></FormField>
-        <ReceiptUpload userId={adminId} bucket="payout-proofs" name="proof_path" label="Bukti (pilihan)" required={false} />
         <SubmitButton className="w-full" variant={direction === "out" ? "destructive" : "default"}>
           {direction === "out" ? "Rekod pengeluaran" : "Rekod wang masuk"}
         </SubmitButton>

@@ -56,8 +56,10 @@ test("qurban sale: reserve → upload proof → admin verifies & approves → RM
   // another member cannot open this sale
   await logout(page);
   await login(page, MEMBER1);
-  const res = await page.goto(saleUrl);
-  expect(res?.status()).toBe(404);
+  await page.goto(saleUrl);
+  await expect(page.getByRole("heading", { name: "Halaman tidak dijumpai" })).toBeVisible();
+  await expect(page.getByText(saleNo)).toHaveCount(0);
+  await expect(page.getByText("Pembeli Ujian E2E")).toHaveCount(0);
 
   // admin verifies the payment and approves
   await logout(page);

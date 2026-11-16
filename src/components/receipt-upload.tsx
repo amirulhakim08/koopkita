@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import { CheckCircle2, FileUp, Loader2, X } from "lucide-react";
+import { CheckCircle2, FileUp, Loader2, ScanText, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { validateUpload } from "@/lib/validation";
 import { cn } from "@/lib/utils";
@@ -11,9 +11,51 @@ import { useFieldError } from "@/components/action-form";
  * Storage RLS only allows writes into the user's own folder; the bucket also
  * enforces size and MIME type. The server action receives only the object path.
  */
+type Autofill = { amount?: string; date?: string; reference?: string };
+
+/** Set an input's value so both plain and React-controlled inputs pick it up. */
+function setFieldValue(input: HTMLInputElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  setter?.call(input, value);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+/** Only fill a field the user has not typed into (empty, or still showing its default). */
+function untouched(input: HTMLInputElement) {
+  return input.value === "" || input.value === input.defaultValue;
+}
+
 export function ReceiptUpload({
-  userId, name = "receipt_path", bucket = "receipts", label = "Resit pembayaran", required = true,
-}: { userId: string; name?: string; bucket?: "receipts" | "payout-proofs"; label?: string; required?: boolean }) {
+  userId, name = "receipt_path", bucket = "receipts", label = "Resit pembayaran", required = true, autofill,
+}: { userId: string; name?: string; bucket?: "receipts" | "payout-proofs"; label?: string; required?: boolean; autofill?: Autofill }) {
+  const [ocr, setOcr] = React.useState<{ state: "reading" | "done" | "none"; filled?: string[] } | null>(null);
+  const rootRef = React.useRef<HTMLDivElement>(null);
+
+  async function readReceipt(file: File) {
+    if (!autofill) return;
+    setOcr({ state: "reading" });
+    try {
+      const [{ extractReceiptText }, { parseReceipt }] = await Promise.all([import("@/lib/ocr/extract"), import("@/lib/ocr/parse-receipt")]);
+      const fields = parseReceipt(await extractReceiptText(file));
+      const form = rootRef.current?.closest("form");
+      const filled: string[] = [];
+      const fill = (field: string | undefined, value: string | undefined, label: string) => {
+        if (!field || !value || !form) return;
+        const input = form.querySelector<HTMLInputElement>(`input[name="${field}"]`);
+        if (input && untouched(input)) {
+          setFieldValue(input, value);
+          filled.push(label);
+        }
+      };
+      fill(autofill.amount, fields.amountSen ? (fields.amountSen / 100).toFixed(2) : undefined, "jumlah");
+      fill(autofill.date, fields.date, "tarikh");
+      fill(autofill.reference, fields.reference, "rujukan");
+      setOcr(filled.length ? { state: "done", filled } : { state: "none" });
+    } catch {
+      setOcr({ state: "none" });
+    }
+  }
   const [path, setPath] = React.useState("");
   const [fileName, setFileName] = React.useState("");
   const [status, setStatus] = React.useState<"idle" | "uploading" | "done" | "error">("idle");
@@ -34,6 +76,7 @@ export function ReceiptUpload({
     setError(null);
     setStatus("uploading");
     setFileName(file.name);
+    void readReceipt(file); // runs in the browser while the file uploads
     const ext = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf" }[file.type] ?? "bin";
     const objectPath = `${userId}/${crypto.randomUUID()}.${ext}`;
     const { error: upErr } = await createClient().storage.from(bucket).upload(objectPath, file, {
@@ -49,7 +92,7 @@ export function ReceiptUpload({
   }
 
   return (
-    <div className="space-y-1.5">
+    <div ref={rootRef} className="space-y-1.5">
       <label htmlFor={inputId} className="text-sm font-medium">
         {label}
         {required && <span className="ml-0.5 text-danger">*</span>}
@@ -78,6 +121,15 @@ export function ReceiptUpload({
       </label>
       <input id={inputId} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="sr-only" onChange={onChange} />
       {(error || fieldError?.[0]) && <p className="text-xs font-medium text-danger">{error ?? fieldError?.[0]}</p>}
+      {autofill && ocr && (
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground" role="status">
+          {ocr.state === "reading" ? <Loader2 className="size-3.5 animate-spin" /> : <ScanText className="size-3.5" />}
+          {ocr.state === "reading" && "Membaca resit…"}
+          {ocr.state === "done" && <span><strong className="text-success">Diisi automatik daripada resit:</strong> {ocr.filled!.join(", ")}. Sila semak sebelum hantar.</span>}
+          {ocr.state === "none" && "Resit tidak dapat dibaca secara automatik — sila isi secara manual."}
+        </p>
+      )}
+      {autofill && !ocr && <p className="text-xs text-muted-foreground">Jumlah, tarikh dan rujukan akan diisi automatik daripada resit (dibaca dalam peranti anda).</p>}
     </div>
   );
 }

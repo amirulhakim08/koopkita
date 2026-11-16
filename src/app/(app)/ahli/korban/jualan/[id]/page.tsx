@@ -67,6 +67,7 @@ export default async function MemberSalePage({ params, searchParams }: { params:
                 <ActionForm action={submitSalePaymentAction} className="space-y-4" resetOnSuccess>
                   <IdempotencyKey />
                   <input type="hidden" name="sale_id" value={sale.id} />
+                  <ReceiptUpload userId={userId} autofill={{ amount: "amount", date: "payment_date", reference: "transaction_ref" }} />
                   <FormField label="Jumlah dibayar (RM)" htmlFor="amount" required>
                     <Input id="amount" name="amount" inputMode="decimal" defaultValue={senToDecimal(bundle.remainingSen)} />
                   </FormField>
@@ -76,7 +77,6 @@ export default async function MemberSalePage({ params, searchParams }: { params:
                   <FormField label="Rujukan transaksi bank" htmlFor="transaction_ref" required>
                     <Input id="transaction_ref" name="transaction_ref" />
                   </FormField>
-                  <ReceiptUpload userId={userId} />
                   <SubmitButton className="w-full">Hantar untuk semakan</SubmitButton>
                 </ActionForm>
               </CardContent>
