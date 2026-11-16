@@ -19,7 +19,8 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
   const { q, status } = await searchParams;
   const supabase = await createClient();
   let query = supabase.from("profiles").select("id, membership_id, full_name, email, phone, state, status, role, created_at").order("created_at", { ascending: false }).limit(300);
-  if (status && status in MEMBER_STATUS) query = query.eq("status", status);
+  if (status === "menunggu") query = query.in("status", ["pending_approval", "pending_verification"]);
+  else if (status && status in MEMBER_STATUS) query = query.eq("status", status);
   const term = searchTerm(q);
   if (term) query = query.or(`full_name.ilike.%${term}%,email.ilike.%${term}%,membership_id.ilike.%${term}%,phone.ilike.%${term}%`);
   const [{ data: members }, { data: balances }] = await Promise.all([query, supabase.from("v_share_balances").select("member_id, approved_sen")]);
@@ -30,7 +31,7 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
       <PageHeader title="Pengurusan ahli" description="Semak permohonan, urus status dan maklumat ahli."
         actions={<Button asChild variant="outline"><Link href="/api/eksport/ahli">Eksport CSV</Link></Button>} />
       <SearchBar q={q} placeholder="Cari nama, e-mel, no. ahli atau telefon"
-        filters={[{ name: "status", value: status, label: "Status", options: Object.entries(MEMBER_STATUS).map(([k, v]) => [k, v.label]) }]} />
+        filters={[{ name: "status", value: status, label: "Status", options: [["menunggu", "Menunggu kelulusan (semua)"], ...Object.entries(MEMBER_STATUS).map(([k, v]) => [k, v.label] as [string, string])] }]} />
       {members?.length ? (
         <Table>
           <THead><TR><TH>No. Ahli</TH><TH>Nama</TH><TH>Hubungan</TH><TH>Negeri</TH><TH className="text-right">Modal saham</TH><TH>Status</TH><TH>Daftar</TH></TR></THead>

@@ -49,7 +49,7 @@ export default async function AdminDashboard() {
       {(s.pending_approvals > 0 || s.pending_share_count > 0 || s.pending_sales > 0) && (
         <div className="mb-6 grid gap-3 sm:grid-cols-3">
           {[
-            { n: s.pending_approvals, label: "permohonan ahli menunggu", href: "/admin/ahli?status=pending_approval", icon: UserPlus },
+            { n: s.pending_approvals, label: "permohonan ahli menunggu", href: "/admin/ahli?status=menunggu", icon: UserPlus },
             { n: s.pending_share_count, label: "bayaran saham menunggu", href: "/admin/saham", icon: PiggyBank },
             { n: s.pending_sales, label: "jualan korban menunggu", href: "/admin/jualan?status=pending_review", icon: AlertCircle },
           ].filter((x) => x.n > 0).map((x) => (

@@ -112,8 +112,10 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                 <Card>
                   <CardHeader><CardTitle>Semak permohonan</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
-                    {m.status === "pending_verification" && <Alert tone="warning">E-mel pemohon belum disahkan. Kelulusan hanya selepas pengesahan e-mel.</Alert>}
-                    {m.status === "pending_approval" && (
+                    {m.status === "pending_verification" && (
+                      <Alert tone="info">E-mel pemohon belum disahkan. Meluluskan permohonan ini akan mengesahkan e-mel secara automatik dan ahli boleh terus log masuk.</Alert>
+                    )}
+                    {(m.status === "pending_approval" || m.status === "pending_verification") && (
                       <ActionForm action={approveMemberAction} className="space-y-3">
                         <input type="hidden" name="user_id" value={m.id} />
                         <FormField label="Catatan (pilihan)" htmlFor="approve_notes" name="notes"><Input id="approve_notes" name="notes" /></FormField>

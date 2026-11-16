@@ -45,9 +45,16 @@ describe("membership & access control", () => {
     expect(after.rows[0].status).toBe("pending_approval");
   });
 
-  it("cannot approve an applicant whose email is not verified", async () => {
+  it("Super Admin approval of an unverified applicant also confirms their email", async () => {
     const uid = await signUp(pool, "belum@kita.test", { confirmed: false });
-    await expect(asUser(pool, admin, `select public.approve_member($1, null)`, [uid])).rejects.toThrow(/CONFLICT/);
+    const [{ m }] = await asUser<{ m: string }>(pool, admin, `select public.approve_member($1, null) as m`, [uid]);
+    expect(m).toMatch(/^KITA-\d{4}$/);
+    const { rows } = await pool.query(
+      `select u.email_confirmed_at is not null as confirmed, p.status, p.email_verified_at is not null as verified
+         from auth.users u join public.profiles p on p.id = u.id where u.id = $1`, [uid]);
+    expect(rows[0]).toEqual({ confirmed: true, status: "active", verified: true });
+    const audit = await pool.query(`select details from public.audit_logs where action = 'member.approved' and entity_id = $1`, [uid]);
+    expect(audit.rows[0].details.email_confirmed_by_admin).toBe(true);
   });
 
   it("#1 unapproved members cannot access protected data or dashboards", async () => {
