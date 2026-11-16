@@ -69,17 +69,23 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
 - PWA: manifest, icons (incl. maskable), privacy-safe service worker, offline page, install instructions (`/pasang`).
 - Mobile layout: bottom navigation + drawer, verified at Pixel 7 size with no horizontal overflow.
 
-## Phase 7 — Deployment ⏳ (waiting on owner confirmation)
-- Instructions are in README → Deployment.
-- Not yet done, because each step changes production or needs credentials:
-  - Apply the migrations to the production Supabase project (two projects are visible in the connected Supabase account; which one is KoopKITA's must be confirmed).
-  - Configure Auth (confirm email, TOTP MFA, redirect URLs, SMTP).
-  - Connect the GitHub repo to Vercel and set the environment variables.
-  - Provision the Super Admin and enter the official bank account.
-  - Production smoke test of auth and access control.
+## Phase 7 — Deployment 🟡 (in progress)
+- ✅ Supabase project **mydevelopment** (`pikifjnwjpzoeqhorvpe`, ap-southeast-1 Singapore) created for KoopKITA only.
+- ✅ Migrations 000001–000006 applied (schema only, **no seed data**). Schema fingerprint (functions, columns,
+  constraints, policies, triggers, grants) verified identical to the tested local stack.
+- ✅ Private buckets `receipts` and `payout-proofs` created; pg_cron job `koopkita-expire-reservations` (every 15 min) active;
+  `admin_mfa_required = true`.
+- ✅ Security Advisors: no errors. Expected findings only:
+  - WARN "authenticated can execute SECURITY DEFINER function" × 28: intentional. These are the API surface; every
+    function enforces authorization internally (covered by integration tests).
+  - INFO "RLS enabled, no policy" on `app_private.rate_limits`: intentional deny-all (private table, not exposed).
+- ⏳ Auth configuration in the dashboard: Site URL, redirect URLs, confirm email, TOTP MFA, custom SMTP.
+- ⏳ Connect the GitHub repo to Vercel and set the 3 environment variables.
+- ⏳ Provision the first Super Admin, enrol MFA, enter the official cooperative bank account.
+- ⏳ Production smoke test of authentication and access control.
 
 ## Outstanding issues / next steps
-- ⏳ **Production deployment** (Phase 7 above).
+- ⏳ **Finish production deployment** (Phase 7 above).
 - ⏳ **Transactional email** for notifications (in-app only today). The in-app notification insert is designed so that an email worker (e.g. a Supabase Edge Function on `notifications` inserts) can be added without touching financial code.
 - ⏳ **Member data anonymisation procedure** for retention requests (records are never hard-deleted).
 - 🟡 Login and registration throttling is per server instance (in-memory) on top of Supabase Auth limits. For stricter global limits, add Vercel WAF / Upstash.
