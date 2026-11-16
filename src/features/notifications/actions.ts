@@ -12,12 +12,16 @@ export async function sendAnnouncementAction(_prev: ActionState, formData: FormD
     title: z.string().trim().min(3, "Tajuk diperlukan").max(150),
     body: z.string().trim().min(3, "Mesej diperlukan").max(2000),
     link: z.preprocess((v) => (v === "" ? undefined : v), z.string().regex(/^\/[A-Za-z0-9/_-]*$/, "Pautan dalaman sahaja (cth. /ahli/korban)").optional()),
+    target: z.enum(["all", "selected"]),
+    user_ids: z.array(z.string().uuid()).max(5000),
   });
-  const parsed = schema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return fail("Sila semak pengumuman.", Object.fromEntries(parsed.error.issues.map((i) => [i.path.join("."), [i.message]])));
-  const res = await callRpc<number>("send_announcement", { p_title: parsed.data.title, p_body: parsed.data.body, p_link: parsed.data.link ?? null }, {
-    success: "Pengumuman dihantar.", revalidate: ["/"],
-  });
-  if (res?.ok) res.message = `Pengumuman dihantar kepada ${res.data} ahli.`;
+  const parsed = schema.safeParse({ ...Object.fromEntries(formData), user_ids: formData.getAll("user_ids").map(String) });
+  if (!parsed.success) return fail("Sila semak notifikasi.", Object.fromEntries(parsed.error.issues.map((i) => [i.path.join("."), [i.message]])));
+  const d = parsed.data;
+  if (d.target === "selected" && d.user_ids.length === 0) return fail("Sila pilih sekurang-kurangnya seorang ahli.", { user_ids: ["Pilih ahli"] });
+  const res = await callRpc<number>("send_member_notification", {
+    p_title: d.title, p_body: d.body, p_link: d.link ?? null, p_user_ids: d.target === "all" ? null : d.user_ids,
+  }, { success: "Notifikasi dihantar.", revalidate: ["/"] });
+  if (res?.ok) res.message = `Notifikasi dihantar kepada ${res.data} ahli.`;
   return res;
 }

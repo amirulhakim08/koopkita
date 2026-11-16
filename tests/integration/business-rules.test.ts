@@ -543,6 +543,84 @@ describe("commission payout requests", () => {
   });
 });
 
+describe("cooperative finance (admin only)", () => {
+  let member: string;
+  const entry = (dir: "in" | "out", cat: string, sen: number, desc: string, biz = "umum") =>
+    asUser<{ id: string }>(pool, admin, `select public.record_coop_entry($1, $2, $3, $4, current_date, $5, 'REF', null, null) as id`,
+      [dir, cat, biz, sen, desc]).then((r) => r[0].id);
+  const summary = async () =>
+    (await asUser<{ s: Record<string, number> }>(pool, admin, `select public.admin_finance_summary(null, null) as s`))[0].s;
+
+  beforeAll(async () => {
+    member = await createActiveMember(pool, admin, "kewangan@kita.test");
+  });
+
+  it("records money in and out and computes total cooperative funds", async () => {
+    const before = await summary();
+    await entry("in", "hasil_perniagaan", 500000, "Jualan hasil tani bulan November", "pertanian");
+    await entry("out", "pengeluaran_tunai", 120000, "Pengeluaran untuk baja dan racun", "pertanian");
+    const after = await summary();
+    expect(Number(after.manual_in_sen) - Number(before.manual_in_sen)).toBe(500000);
+    expect(Number(after.manual_out_sen) - Number(before.manual_out_sen)).toBe(120000);
+    expect(Number(after.total_funds_sen) - Number(before.total_funds_sen)).toBe(380000);
+    // total = share capital + qurban received - commission paid + manual in - manual out
+    expect(Number(after.total_funds_sen)).toBe(
+      Number(after.share_capital_sen) + Number(after.qurban_received_sen) - Number(after.commission_paid_sen)
+      + Number(after.manual_in_sen) - Number(after.manual_out_sen));
+    expect(Number(after.funds_excl_share_sen)).toBe(Number(after.total_funds_sen) - Number(after.share_capital_sen));
+  });
+
+  it("requires a reason and a category that matches the direction", async () => {
+    await expect(entry("out", "pengeluaran_tunai", 1000, "x")).rejects.toThrow(/sebab pengeluaran/);
+    await expect(entry("out", "hasil_perniagaan", 1000, "Kategori salah arah")).rejects.toThrow(/Kategori/);
+    await expect(entry("in", "sumbangan", 1000, "Perniagaan tidak wujud", "kasino")).rejects.toThrow(/Kategori atau perniagaan/);
+  });
+
+  it("corrections are reversal entries; records cannot be edited or deleted", async () => {
+    const before = Number((await summary()).total_funds_sen);
+    const id = await entry("out", "perbelanjaan_operasi", 30000, "Bil elektrik pejabat");
+    await asUser(pool, admin, `select public.reverse_coop_entry($1, 'Tersalah rekod')`, [id]);
+    await asUser(pool, admin, `select public.reverse_coop_entry($1, 'Ulang')`, [id]); // idempotent
+    expect(Number((await summary()).total_funds_sen)).toBe(before);
+    await expect(pool.query(`update public.coop_ledger_entries set amount_sen = 1 where id = $1`, [id])).rejects.toThrow(/IMMUTABLE_RECORD/);
+    await expect(pool.query(`delete from public.coop_ledger_entries where id = $1`, [id])).rejects.toThrow(/IMMUTABLE_RECORD/);
+    const book = await asUser<{ source: string; reversed: boolean }>(pool, admin, `select * from public.admin_cashbook(null, null, 1000)`);
+    expect(book.some((r) => r.source === "manual" && r.reversed)).toBe(true);
+    expect(new Set(book.map((r) => r.source))).toEqual(new Set(["manual", "modal_syer", "korban", "komisen"]));
+  });
+
+  it("members can neither see nor record cooperative finances", async () => {
+    expect(await asUser(pool, member, `select * from public.coop_ledger_entries`)).toHaveLength(0);
+    await expect(asUser(pool, member, `select public.admin_finance_summary(null, null)`)).rejects.toThrow(/FORBIDDEN/);
+    await expect(asUser(pool, member, `select * from public.admin_cashbook(null, null, 10)`)).rejects.toThrow(/FORBIDDEN/);
+    await expect(asUser(pool, member,
+      `select public.record_coop_entry('out', 'pengeluaran_tunai', 'umum', 100, current_date, 'Cubaan ahli', null, null, null)`)).rejects.toThrow(/FORBIDDEN/);
+    await expect(asRole(pool, "anon", {}, `select * from public.coop_ledger_entries`)).rejects.toThrow(/permission denied/);
+    await expect(asUser(pool, admin, `select public.admin_finance_summary(null, null)`, [], "aal1")).rejects.toThrow(/MFA_REQUIRED/);
+  });
+});
+
+describe("admin notifications", () => {
+  it("sends to all active members or only to selected members", async () => {
+    const a = await createActiveMember(pool, admin, "notis-a@kita.test");
+    const b = await createActiveMember(pool, admin, "notis-b@kita.test");
+    const pending = await signUp(pool, "notis-pending@kita.test");
+    const count = async (uid: string, title: string) =>
+      (await pool.query(`select count(*)::int c from public.notifications where user_id = $1 and title = $2`, [uid, title])).rows[0].c;
+
+    const [{ n }] = await asUser<{ n: number }>(pool, admin, `select public.send_member_notification('Mesyuarat Agung', 'Sila hadir', '/ahli', $1) as n`, [[a]]);
+    expect(n).toBe(1);
+    expect([await count(a, "Mesyuarat Agung"), await count(b, "Mesyuarat Agung")]).toEqual([1, 0]);
+
+    await asUser(pool, admin, `select public.send_member_notification('Notis Semua', 'Untuk semua ahli', null, null)`);
+    expect([await count(a, "Notis Semua"), await count(b, "Notis Semua"), await count(pending, "Notis Semua")]).toEqual([1, 1, 0]);
+
+    await expect(asUser(pool, admin, `select public.send_member_notification('Kosong', 'Tiada penerima', null, $1)`, [[pending]])).rejects.toThrow(/Tiada ahli aktif/);
+    await expect(asUser(pool, admin, `select public.send_member_notification('Pautan', 'Luar', 'https://evil.example', null)`)).rejects.toThrow(/dalaman/);
+    await expect(asUser(pool, a, `select public.send_member_notification('Ahli', 'Cuba hantar', null, null)`)).rejects.toThrow(/FORBIDDEN/);
+  });
+});
+
 describe("data isolation & immutability", () => {
   it("#16 members cannot access another member's private data", async () => {
     const campaign = await createOpenCampaign(pool, admin, 1, 2030);

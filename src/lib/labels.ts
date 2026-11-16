@@ -68,3 +68,49 @@ export const PAYOUT_REQUEST_STATUS: Record<string, { label: string; tone: Tone }
   rejected: { label: "Ditolak", tone: "danger" },
   cancelled: { label: "Dibatalkan", tone: "neutral" },
 };
+
+export const BUSINESSES: Record<string, string> = {
+  umum: "Umum / Pentadbiran",
+  korban: "Korban",
+  pertanian: "Pertanian",
+  pelancongan: "Pelancongan",
+  lain_lain: "Lain-lain",
+};
+
+export const FINANCE_IN_CATEGORIES: Record<string, string> = {
+  hasil_perniagaan: "Hasil perniagaan",
+  sumbangan: "Sumbangan / derma",
+  yuran: "Yuran",
+  pinjaman_diterima: "Pinjaman diterima",
+  baki_permulaan: "Baki permulaan",
+  lain_lain_masuk: "Lain-lain (masuk)",
+};
+
+export const FINANCE_OUT_CATEGORIES: Record<string, string> = {
+  pengeluaran_tunai: "Pengeluaran tunai",
+  perbelanjaan_operasi: "Perbelanjaan operasi",
+  pembelian_stok: "Pembelian stok / bahan",
+  pembelian_aset: "Pembelian aset",
+  gaji_elaun: "Gaji / elaun",
+  sewa_utiliti: "Sewa / utiliti",
+  bayaran_balik_pinjaman: "Bayaran balik pinjaman",
+  pemulangan_bayaran: "Pemulangan bayaran pelanggan",
+  lain_lain_keluar: "Lain-lain (keluar)",
+};
+
+/** Labels for every category in the cash book, including automatic flows. */
+export const CASHBOOK_CATEGORIES: Record<string, string> = {
+  ...FINANCE_IN_CATEGORIES,
+  ...FINANCE_OUT_CATEGORIES,
+  modal_syer: "Modal syer",
+  pelarasan_modal_syer: "Pelarasan modal syer",
+  bayaran_korban: "Bayaran korban",
+  bayaran_komisen: "Bayaran komisen",
+};
+
+export const CASHBOOK_SOURCES: Record<string, { label: string; tone: Tone }> = {
+  manual: { label: "Rekod manual", tone: "neutral" },
+  modal_syer: { label: "Modal syer", tone: "info" },
+  korban: { label: "Korban", tone: "success" },
+  komisen: { label: "Komisen", tone: "warning" },
+};

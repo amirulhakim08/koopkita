@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatDate, formatDateTime, maskIc, senToDecimal } from "@/lib/format";
-import { COMMISSION_TYPE, MEMBER_STATUS, QURBAN_TYPE, REVIEW_STATUS, SALE_STATUS, SLOT_STATUS, CAMPAIGN_STATUS } from "@/lib/labels";
+import { BUSINESSES, CASHBOOK_CATEGORIES, CASHBOOK_SOURCES, COMMISSION_TYPE, MEMBER_STATUS, QURBAN_TYPE, REVIEW_STATUS, SALE_STATUS, SLOT_STATUS, CAMPAIGN_STATUS } from "@/lib/labels";
 
 type Cell = string | number | null | undefined;
 export type Report = { title: string; description: string; build: (sb: SupabaseClient, params: URLSearchParams) => Promise<{ headers: string[]; rows: Cell[][] }> };
@@ -10,6 +10,22 @@ const label = (m: Record<string, { label: string }>, v: string) => m[v]?.label ?
 type Rel<T> = T | null;
 
 export const REPORTS: Record<string, Report> = {
+  "buku-tunai": {
+    title: "Buku tunai koperasi",
+    description: "Semua wang masuk dan keluar: modal syer, korban, komisen dan rekod manual (pengeluaran, perbelanjaan, perniagaan lain). Parameter: ?dari=YYYY-MM-DD&hingga=YYYY-MM-DD",
+    async build(sb, params) {
+      const d = (k: string) => (/^\d{4}-\d{2}-\d{2}$/.test(params.get(k) ?? "") ? params.get(k) : null);
+      const { data } = await sb.rpc("admin_cashbook", { p_from: d("dari"), p_to: d("hingga"), p_limit: 10000 });
+      const rows = ((data ?? []) as { entry_date: string; entry_no: string | null; source: string; category: string; business: string;
+        description: string; reference: string | null; amount_sen: number; reversed: boolean }[]).reverse();
+      return {
+        headers: ["Tarikh", "No. Rekod", "Sumber", "Kategori", "Perniagaan", "Keterangan / Sebab", "Rujukan", "Masuk (RM)", "Keluar (RM)", "Dibalikkan?"],
+        rows: rows.map((r) => [formatDate(r.entry_date), r.entry_no, CASHBOOK_SOURCES[r.source]?.label ?? r.source,
+          CASHBOOK_CATEGORIES[r.category] ?? r.category, BUSINESSES[r.business] ?? r.business, r.description, r.reference,
+          r.amount_sen > 0 ? senToDecimal(r.amount_sen) : "", r.amount_sen < 0 ? senToDecimal(-r.amount_sen) : "", r.reversed ? "Ya" : ""]),
+      };
+    },
+  },
   ahli: {
     title: "Senarai ahli",
     description: "Semua ahli dengan status keahlian dan maklumat hubungan (No. KP disamarkan).",

@@ -16,8 +16,9 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin/kempen", label: "Kempen Korban", icon: "beef" },
   { href: "/admin/jualan", label: "Jualan Korban", icon: "receipt", mobile: true },
   { href: "/admin/komisen", label: "Komisen", icon: "wallet", mobile: true },
+  { href: "/admin/kewangan", label: "Kewangan", icon: "landmark" },
   { href: "/admin/laporan", label: "Laporan", icon: "file" },
-  { href: "/admin/pengumuman", label: "Pengumuman", icon: "megaphone" },
+  { href: "/admin/pengumuman", label: "Notifikasi Ahli", icon: "megaphone" },
   { href: "/admin/audit", label: "Log Audit", icon: "shield" },
   { href: "/admin/tetapan", label: "Tetapan", icon: "settings" },
 ];
