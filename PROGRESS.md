@@ -1,6 +1,6 @@
 # KoopKITA V1.0 — Development progress
 
-Last updated: 2026-11-15
+Last updated: 2026-11-17
 
 Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ not started / outstanding
 
@@ -9,8 +9,8 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
 | Suite | Command | Result |
 | --- | --- | --- |
 | Unit | `npm run test:unit` | ✅ 25 / 25 |
-| SQL integration (real migrations on PostgreSQL 16, RLS as `anon`/`authenticated`/`service_role`) | `npm run test:integration` | ✅ 42 / 42 |
-| E2E (Playwright, production build + local Supabase stack on Postgres 17, real GoTrue/Storage/Mailpit) | `npm run test:e2e` | ✅ 11 / 11 (desktop + Pixel 7) |
+| SQL integration (real migrations on PostgreSQL 16, RLS as `anon`/`authenticated`/`service_role`) | `npm run test:integration` | ✅ 50 / 50 |
+| E2E (Playwright, production build + local Supabase stack on Postgres 17, real GoTrue/Storage/Mailpit) | `npm run test:e2e` | ✅ 14 / 14 (desktop + Pixel 7) |
 | Typecheck / lint / build | `npm run typecheck`, `npm run lint`, `npm run build` | ✅ clean |
 | `supabase db lint` | | ✅ no errors (only intentional "never read variable v_admin" notes: that call exists for its authorization side effect) |
 
@@ -69,28 +69,44 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
 - PWA: manifest, icons (incl. maskable), privacy-safe service worker, offline page, install instructions (`/pasang`).
 - Mobile layout: bottom navigation + drawer, verified at Pixel 7 size with no horizontal overflow.
 
-## Phase 7 — Deployment 🟡 (in progress)
-- ✅ Supabase project **mydevelopment** (`pikifjnwjpzoeqhorvpe`, ap-southeast-1 Singapore) created for KoopKITA only.
-- ✅ Migrations 000001–000006 applied (schema only, **no seed data**). Schema fingerprint (functions, columns,
-  constraints, policies, triggers, grants) verified identical to the tested local stack.
-- ✅ Private buckets `receipts` and `payout-proofs` created; pg_cron job `koopkita-expire-reservations` (every 15 min) active;
-  `admin_mfa_required = true`.
+## Phase 7 — Deployment ✅ (live, iterating)
+- ✅ Supabase project **mydevelopment** (`pikifjnwjpzoeqhorvpe`, ap-southeast-1 Singapore), used for KoopKITA only.
+- ✅ Migrations 000001–000011 applied (schema only, **no seed data**). After each one, the full schema fingerprint (functions, columns, constraints, policies, triggers, grants) matched the tested local stack.
+- ✅ Private buckets `receipts` and `payout-proofs`; pg_cron job `koopkita-expire-reservations` (every 15 min).
+- ✅ Vercel project `koopkita` deployed from `main` at https://koopkita.vercel.app with the 3 public env vars.
+- ✅ First Super Admin provisioned (KITA-0001).
 - ✅ Security Advisors: no errors. Expected findings only:
-  - WARN "authenticated can execute SECURITY DEFINER function" × 28: intentional. These are the API surface; every
-    function enforces authorization internally (covered by integration tests).
-  - INFO "RLS enabled, no policy" on `app_private.rate_limits`: intentional deny-all (private table, not exposed).
-- ⏳ Auth configuration in the dashboard: Site URL, redirect URLs, confirm email, TOTP MFA, custom SMTP.
-- ⏳ Connect the GitHub repo to Vercel and set the 3 environment variables.
-- ⏳ Provision the first Super Admin, enrol MFA, enter the official cooperative bank account.
-- ⏳ Production smoke test of authentication and access control.
+  - WARN "authenticated can execute SECURITY DEFINER function": intentional. These functions are the API surface, and each one enforces authorization internally.
+  - INFO "RLS enabled, no policy" on `app_private.rate_limits`: intentional deny-all.
+  - WARN "leaked password protection disabled": an Auth dashboard setting; see outstanding issues.
+- ⏳ Owner actions in the Supabase dashboard:
+  - Site URL / redirect URLs → `https://koopkita.vercel.app`
+  - Custom SMTP
+  - Re-enable admin MFA before onboarding real members (`admin_mfa_required` is currently **off** at the owner's request)
+  - Enter the official cooperative bank account in Tetapan
+
+## Change log
+- **2026-11-17: cooperative finance + targeted notifications (migrations 000010–000011, applied).**
+  - Admin-only **Kewangan Koperasi**: money in / out records per business, a mandatory reason, optional proof, and reversal-only corrections.
+  - Total funds = share capital + verified Qurban payments − commission payouts + other money in − money out.
+  - Combined cash book with CSV export (`buku-tunai`); the total is also on the admin dashboard.
+  - Members cannot read or call any of it (RLS + `require_admin`, tested).
+  - **Notifikasi Ahli**: send to all active members or to selected members, with a sent history.
+  - Label changed to "Bayaran syer belum disemak".
+- **2026-11-16: terminology + icon (migration 000009, applied).** "Modal saham" became "modal syer" in the UI, notifications, database messages and reports; URLs are unchanged. The piggy-bank icon was replaced with coins.
+- **2026-11-16: admin approval without email verification (migration 000008, applied).** Approving an unverified applicant confirms their email so they can sign in at once.
+- **2026-11-16: sales before bank setup + commission payout requests (migration 000007, applied).**
+  - Sales no longer require the cooperative bank account.
+  - Members request a commission transfer to a valid bank account on their profile; payouts require valid bank details.
+  - Malaysian bank picker.
 
 ## Outstanding issues / next steps
-- ⏳ **Finish production deployment** (Phase 7 above).
+- ⏳ **Owner dashboard actions** (Phase 7 above). Also consider enabling leaked-password protection (Supabase Auth, Pro plan).
 - ⏳ **Transactional email** for notifications (in-app only today). The in-app notification insert is designed so that an email worker (e.g. a Supabase Edge Function on `notifications` inserts) can be added without touching financial code.
 - ⏳ **Member data anonymisation procedure** for retention requests (records are never hard-deleted).
 - 🟡 Login and registration throttling is per server instance (in-memory) on top of Supabase Auth limits. For stricter global limits, add Vercel WAF / Upstash.
 - 🟡 Rejected applicants cannot re-apply with the same email or IC. An admin would need to handle this manually (V2: re-application flow).
 - 🟡 Admin slot override is limited to sales that are not yet approved (avoids silently changing commission eligibility).
 - 🟡 A Super Admin's own sales, share payments and payouts must be handled by a second Super Admin (segregation of duties). Provision at least two admins.
-- 🟡 E2E tests share the seeded local database. Run `npx supabase db reset` for a clean slate; the login throttle (20/IP per 15 min) can trip if the suite is run many times against one server process.
+- 🟡 E2E tests share the seeded local database. Run `npx supabase db reset` for a clean slate; start the server with `AUTH_RATE_LIMIT_MULTIPLIER=50` so the login throttle does not trip.
 - Out of scope for V1 (per spec): marketplace, tourism bookings, dividends, share withdrawals.

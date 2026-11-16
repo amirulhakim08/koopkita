@@ -11,7 +11,7 @@ test("share payment: pending does not count, admin approval updates the balance"
   await page.getByLabel("Rujukan transaksi bank").fill(ref);
   await uploadReceipt(page);
   await page.getByRole("button", { name: "Hantar untuk semakan" }).click();
-  await expect(page.getByText("Bayaran saham dihantar untuk semakan.")).toBeVisible();
+  await expect(page.getByText("Bayaran syer dihantar untuk semakan.")).toBeVisible();
   await page.reload();
   await expect(page.getByRole("cell", { name: ref })).toBeVisible();
   expect(await approvedCard.textContent()).toBe(before); // pending does not increase approved capital
@@ -21,7 +21,7 @@ test("share payment: pending does not count, admin approval updates the balance"
   await page.goto("/admin/saham");
   const row = page.getByRole("row").filter({ hasText: ref });
   await row.getByRole("button", { name: "Lulus" }).click();
-  await expect(page.getByText("Bayaran saham diluluskan.")).toBeVisible();
+  await expect(page.getByText("Bayaran syer diluluskan.")).toBeVisible();
 
   await logout(page);
   await login(page, MEMBER2);
@@ -112,7 +112,7 @@ test("qurban sale: reserve → upload proof → admin verifies & approves → RM
 test("admin dashboard, reports and audit log", async ({ page }) => {
   await login(page, ADMIN);
   await expect(page).toHaveURL(/\/admin$/);
-  await expect(page.getByText("Modal saham diluluskan")).toBeVisible();
+  await expect(page.getByText("Modal syer diluluskan")).toBeVisible();
   await expect(page.getByText("Papan pendahulu jualan ahli")).toBeVisible();
   const csv = await page.request.get("/api/eksport/komisen");
   expect(csv.status()).toBe(200);

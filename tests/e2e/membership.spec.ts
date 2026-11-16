@@ -25,7 +25,7 @@ test("register → verify email → pending → admin approval → member dashbo
   await page.getByLabel("E-mel").fill(email);
   await page.getByLabel("Kata laluan").fill(password);
   await page.getByRole("button", { name: "Log Masuk" }).click();
-  await expect(page.getByText("E-mel anda belum disahkan")).toBeVisible();
+  await expect(page.getByText("Akaun anda belum diaktifkan")).toBeVisible();
 
   // click the verification link from the local Mailpit inbox
   const html = await latestEmail(email);
@@ -59,4 +59,34 @@ test("register → verify email → pending → admin approval → member dashbo
   // and still cannot open the admin panel
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/ahli$/);
+});
+
+test("Super Admin approval activates an applicant who never verified their email", async ({ page }) => {
+  const stamp = Date.now();
+  const email = `tanpa-sah-${stamp}@koopkita.test`;
+  const password = "UjianE2e#2026";
+  await page.goto("/daftar");
+  await page.getByLabel("Nama penuh (seperti dalam MyKad)").fill("Pemohon Tanpa Pengesahan");
+  await page.getByLabel("No. Kad Pengenalan").fill(`9606060${String(stamp).slice(-5)}`);
+  await page.getByLabel("No. telefon").fill("0128887777");
+  await page.getByLabel("Alamat").fill("No 7, Jalan Ujian, Jitra");
+  await page.getByLabel("Poskod").fill("06000");
+  await page.getByLabel("E-mel").fill(email);
+  await page.locator("#password").fill(password);
+  await page.locator("#confirm_password").fill(password);
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Hantar Permohonan" }).click();
+  await expect(page).toHaveURL(/\/daftar\/semak-emel/);
+
+  await login(page, ADMIN);
+  await page.goto("/admin/ahli?status=menunggu");
+  await page.getByRole("link", { name: "Pemohon Tanpa Pengesahan" }).first().click();
+  await expect(page.getByText("akan mengesahkan e-mel secara automatik")).toBeVisible();
+  await page.getByRole("button", { name: "Luluskan & beri No. Ahli" }).click();
+  await expect(page.getByText("Ahli diluluskan.")).toBeVisible();
+
+  await logout(page);
+  await login(page, { email, password }); // no email link was ever clicked
+  await expect(page).toHaveURL(/\/ahli$/);
+  await expect(page.getByText(/KITA-\d{4}/).first()).toBeVisible();
 });

@@ -24,5 +24,5 @@ export default defineConfig({
   ],
   webServer: process.env.E2E_BASE_URL
     ? undefined
-    : { command: "npm run start", url: "http://localhost:3000/log-masuk", reuseExistingServer: true, timeout: 120_000 },
+    : { command: "AUTH_RATE_LIMIT_MULTIPLIER=50 npm run start", url: "http://localhost:3000/log-masuk", reuseExistingServer: true, timeout: 120_000 },
 });

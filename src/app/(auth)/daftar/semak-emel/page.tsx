@@ -10,10 +10,11 @@ export default function CheckEmailPage() {
       <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-secondary text-primary">
         <MailCheck className="size-7" />
       </span>
-      <h1 className="text-2xl font-bold">Semak e-mel anda</h1>
+      <h1 className="text-2xl font-bold">Permohonan dihantar</h1>
       <p className="text-sm text-muted-foreground">
-        Kami telah menghantar pautan pengesahan. Klik pautan tersebut untuk mengesahkan e-mel anda. Selepas itu,
-        permohonan anda akan berstatus <strong>Menunggu Kelulusan</strong> sehingga disemak oleh Super Admin.
+        Permohonan keahlian anda telah diterima dan akan disemak oleh Super Admin. Anda boleh log masuk sebaik sahaja
+        permohonan <strong>diluluskan</strong>. Jika anda menerima e-mel pengesahan, anda boleh klik pautan tersebut, tetapi
+        ia tidak wajib.
       </p>
       <Button asChild variant="outline" className="w-full"><Link href="/log-masuk">Kembali ke log masuk</Link></Button>
     </div>

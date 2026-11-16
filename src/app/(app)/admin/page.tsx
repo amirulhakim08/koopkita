@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  AlertCircle, Beef, BadgeCheck, CircleDollarSign, Clock, HandCoins, Layers, PiggyBank, ShoppingBag, Trophy, UserCheck, UserPlus, Users, Wallet,
+  AlertCircle, Beef, Landmark, BadgeCheck, CircleDollarSign, Clock, HandCoins, Layers, Coins, ShoppingBag, Trophy, UserCheck, UserPlus, Users, Wallet,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
@@ -29,17 +29,19 @@ type Stats = {
 export default async function AdminDashboard() {
   await requireAdmin();
   const supabase = await createClient();
-  const [{ data, error }, { data: progress }, bank] = await Promise.all([
+  const [{ data, error }, { data: progress }, bank, { data: finance }] = await Promise.all([
     supabase.rpc("admin_dashboard_stats"),
     supabase.from("v_campaign_progress").select("*").in("status", ["open", "closed"]).order("year", { ascending: false }).limit(6),
     getBankSettings(),
+    supabase.rpc("admin_finance_summary", { p_from: null, p_to: null }),
   ]);
+  const funds = finance as { total_funds_sen: number; funds_excl_share_sen: number } | null;
   if (error || !data) return <Alert tone="danger">Statistik tidak dapat dimuatkan.</Alert>;
   const s = data as Stats;
 
   return (
     <>
-      <PageHeader title="Papan pemuka" description="Gambaran keseluruhan keahlian, modal saham, jualan korban dan komisen." />
+      <PageHeader title="Papan pemuka" description="Gambaran keseluruhan keahlian, modal syer, jualan korban dan komisen." />
       {!bank.accountNo && (
         <Alert tone="info" title="Akaun bank koperasi belum ditetapkan" className="mb-6">
           Jualan tetap boleh direkodkan, tetapi ahli tidak akan melihat nombor akaun koperasi pada arahan pembayaran.{" "}
@@ -49,8 +51,8 @@ export default async function AdminDashboard() {
       {(s.pending_approvals > 0 || s.pending_share_count > 0 || s.pending_sales > 0) && (
         <div className="mb-6 grid gap-3 sm:grid-cols-3">
           {[
-            { n: s.pending_approvals, label: "permohonan ahli menunggu", href: "/admin/ahli?status=pending_approval", icon: UserPlus },
-            { n: s.pending_share_count, label: "bayaran saham menunggu", href: "/admin/saham", icon: PiggyBank },
+            { n: s.pending_approvals, label: "permohonan ahli menunggu", href: "/admin/ahli?status=menunggu", icon: UserPlus },
+            { n: s.pending_share_count, label: "bayaran syer belum disemak", href: "/admin/saham", icon: Coins },
             { n: s.pending_sales, label: "jualan korban menunggu", href: "/admin/jualan?status=pending_review", icon: AlertCircle },
           ].filter((x) => x.n > 0).map((x) => (
             <Link key={x.href} href={x.href} className="flex items-center gap-3 rounded-xl border border-warning/25 bg-warning-soft p-4 text-sm hover:shadow-sm">
@@ -60,13 +62,26 @@ export default async function AdminDashboard() {
         </div>
       )}
 
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Keahlian & modal saham</h2>
+      {funds && (
+        <Link href="/admin/kewangan" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary p-5 text-primary-foreground hover:shadow-md">
+          <span className="flex items-center gap-3">
+            <span className="rounded-lg bg-white/10 p-2"><Landmark className="size-5" /></span>
+            <span>
+              <span className="block text-xs uppercase tracking-wide text-primary-foreground/75">Jumlah dana koperasi</span>
+              <span className="text-2xl font-bold tabular-nums">{formatRM(funds.total_funds_sen)}</span>
+            </span>
+          </span>
+          <span className="text-sm text-primary-foreground/80">Selain modal syer: <strong className="text-primary-foreground">{formatRM(funds.funds_excl_share_sen)}</strong> · Lihat kewangan →</span>
+        </Link>
+      )}
+
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Keahlian & modal syer</h2>
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
         <StatCard label="Jumlah ahli" value={s.total_members} icon={Users} />
         <StatCard label="Ahli aktif" value={s.active_members} icon={UserCheck} />
         <StatCard label="Menunggu kelulusan" value={s.pending_approvals} icon={UserPlus} />
-        <StatCard emphasis label="Modal saham diluluskan" value={formatRM(s.approved_share_sen)} icon={PiggyBank} />
-        <StatCard label="Bayaran saham menunggu" value={s.pending_share_count} hint={formatRM(s.pending_share_sen)} icon={Clock} />
+        <StatCard emphasis label="Modal syer diluluskan" value={formatRM(s.approved_share_sen)} icon={Coins} />
+        <StatCard label="Bayaran syer belum disemak" value={s.pending_share_count} hint={`${formatRM(s.pending_share_sen)} · perlu disahkan admin`} icon={Clock} />
       </div>
 
       <h2 className="mb-3 mt-8 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Perniagaan korban</h2>
@@ -88,7 +103,7 @@ export default async function AdminDashboard() {
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <Card><CardHeader><CardTitle>Prestasi jualan (bulanan)</CardTitle></CardHeader><CardContent><SalesChart data={s.sales_by_month} /></CardContent></Card>
-        <Card><CardHeader><CardTitle>Pertumbuhan modal saham</CardTitle></CardHeader><CardContent><ShareGrowthChart data={s.share_capital_by_month} /></CardContent></Card>
+        <Card><CardHeader><CardTitle>Pertumbuhan modal syer</CardTitle></CardHeader><CardContent><ShareGrowthChart data={s.share_capital_by_month} /></CardContent></Card>
         <Card><CardHeader><CardTitle>Taburan komisen</CardTitle></CardHeader><CardContent><CommissionChart data={s.commission_by_type} /></CardContent></Card>
         <Card>
           <CardHeader><CardTitle>Kemajuan kempen</CardTitle></CardHeader>

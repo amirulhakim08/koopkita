@@ -142,7 +142,7 @@ npm run build && npm run start
 npm run test:e2e
 ```
 
-E2E needs `npx supabase start` and a production build running. The tests cover sign-up, email verification, approval, shares, a sale through to commission and payout, real TOTP MFA, exports, PWA and mobile layout.
+E2E needs `npx supabase start` and a production build running. If you start the server yourself, run it as `AUTH_RATE_LIMIT_MULTIPLIER=50 npm run start`; otherwise the login throttle trips during the suite. Never set this variable in production. The tests cover sign-up, email verification, approval, shares, a sale through to commission and payout, real TOTP MFA, exports, PWA and mobile layout.
 
 The required test cases from the specification map to `tests/integration/business-rules.test.ts` (tests are numbered `#1`–`#17`), with UI-level coverage in `tests/e2e`.
 

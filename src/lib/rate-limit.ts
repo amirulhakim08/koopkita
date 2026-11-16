@@ -6,7 +6,12 @@
  */
 const buckets = new Map<string, { count: number; reset: number }>();
 
+// Test environments may raise the limits (e.g. AUTH_RATE_LIMIT_MULTIPLIER=50 for E2E runs).
+// Production leaves this unset, so the default limits apply.
+const MULTIPLIER = Math.max(1, Number(process.env.AUTH_RATE_LIMIT_MULTIPLIER) || 1);
+
 export function hitRateLimit(key: string, max: number, windowMs: number): boolean {
+  max = max * MULTIPLIER;
   const now = Date.now();
   const b = buckets.get(key);
   if (!b || b.reset < now) {

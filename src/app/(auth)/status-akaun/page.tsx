@@ -8,7 +8,7 @@ import { formatDateTime } from "@/lib/format";
 export const metadata = { title: "Status Akaun" };
 
 const content = {
-  pending_verification: { icon: MailWarning, title: "Sahkan e-mel anda", body: "Sila klik pautan pengesahan yang dihantar ke e-mel anda untuk meneruskan permohonan." },
+  pending_verification: { icon: MailWarning, title: "Permohonan sedang disemak", body: "Permohonan keahlian anda sedang menunggu kelulusan Super Admin. Anda boleh mengesahkan e-mel melalui pautan yang dihantar, tetapi ia tidak wajib — kelulusan Super Admin akan mengaktifkan akaun anda." },
   pending_approval: { icon: Clock, title: "Permohonan sedang disemak", body: "E-mel anda telah disahkan. Permohonan keahlian anda sedang menunggu kelulusan Super Admin. Anda akan dimaklumkan selepas disemak." },
   rejected: { icon: ShieldX, title: "Permohonan tidak diluluskan", body: "Permohonan keahlian anda tidak diluluskan. Sila hubungi pejabat koperasi untuk maklumat lanjut." },
   suspended: { icon: Ban, title: "Akaun digantung", body: "Akses akaun anda telah digantung. Sila hubungi pejabat koperasi." },

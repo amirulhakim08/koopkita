@@ -92,8 +92,8 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
           <Card>
             <CardHeader><CardTitle>Ringkasan</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <p className="flex justify-between"><span className="text-muted-foreground">Modal saham</span><strong>{formatRM(balance?.approved_sen)}</strong></p>
-              <p className="flex justify-between"><span className="text-muted-foreground">Saham menunggu</span><span>{formatRM(balance?.pending_sen)}</span></p>
+              <p className="flex justify-between"><span className="text-muted-foreground">Modal syer</span><strong>{formatRM(balance?.approved_sen)}</strong></p>
+              <p className="flex justify-between"><span className="text-muted-foreground">Syer menunggu</span><span>{formatRM(balance?.pending_sen)}</span></p>
               <p className="flex justify-between"><span className="text-muted-foreground">Komisen diperoleh</span><span>{formatRM(commission?.earned_sen)}</span></p>
               <p className="flex justify-between"><span className="text-muted-foreground">Komisen tertunggak</span><strong>{formatRM(commission?.outstanding_sen)}</strong></p>
               <p className="flex justify-between border-t pt-2"><span className="text-muted-foreground">Didaftar</span><span>{formatDateTime(m.created_at)}</span></p>
@@ -112,8 +112,10 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                 <Card>
                   <CardHeader><CardTitle>Semak permohonan</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
-                    {m.status === "pending_verification" && <Alert tone="warning">E-mel pemohon belum disahkan. Kelulusan hanya selepas pengesahan e-mel.</Alert>}
-                    {m.status === "pending_approval" && (
+                    {m.status === "pending_verification" && (
+                      <Alert tone="info">E-mel pemohon belum disahkan. Meluluskan permohonan ini akan mengesahkan e-mel secara automatik dan ahli boleh terus log masuk.</Alert>
+                    )}
+                    {(m.status === "pending_approval" || m.status === "pending_verification") && (
                       <ActionForm action={approveMemberAction} className="space-y-3">
                         <input type="hidden" name="user_id" value={m.id} />
                         <FormField label="Catatan (pilihan)" htmlFor="approve_notes" name="notes"><Input id="approve_notes" name="notes" /></FormField>

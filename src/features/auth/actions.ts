@@ -18,7 +18,7 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
   const d = parsed.data;
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signUp({
+  const { data: signUpData, error } = await supabase.auth.signUp({
     email: d.email,
     password: d.password,
     options: {
@@ -36,7 +36,8 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
     // Duplicate IC numbers violate a unique constraint inside the sign-up trigger.
     return fail("Pendaftaran tidak dapat diproses. E-mel atau No. Kad Pengenalan mungkin telah didaftarkan.");
   }
-  redirect("/daftar/semak-emel");
+  // With "Confirm email" disabled in Supabase the user is signed in straight away.
+  redirect(signUpData.session ? "/status-akaun" : "/daftar/semak-emel");
 }
 
 const loginSchema = z.object({ email: z.email("E-mel tidak sah"), password: z.string().min(1, "Kata laluan diperlukan"), next: z.string().optional() });
@@ -51,7 +52,9 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
   if (error) {
-    if (error.code === "email_not_confirmed") return fail("E-mel anda belum disahkan. Sila semak peti masuk e-mel anda.");
+    if (error.code === "email_not_confirmed") {
+      return fail("Akaun anda belum diaktifkan. Sila klik pautan pengesahan dalam e-mel anda, atau tunggu kelulusan Super Admin.");
+    }
     return fail("E-mel atau kata laluan tidak sah.");
   }
   const { data: profile } = await supabase.from("profiles").select("*").eq("id", data.user.id).maybeSingle();
