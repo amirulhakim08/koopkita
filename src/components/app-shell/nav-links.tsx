@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
+import { createPortal } from "react-dom";
 import {
   Bell, Beef, Landmark, FileSpreadsheet, Home, LayoutDashboard, Megaphone, Menu, Coins, Receipt, Settings, ShieldCheck, User, Users, Wallet, X,
 } from "lucide-react";
@@ -84,21 +85,25 @@ export function MobileMenu({ items, root, footer }: { items: NavItem[]; root: st
       <button type="button" className="rounded-lg p-2 hover:bg-muted lg:hidden" onClick={() => setOpen(true)} aria-label="Buka menu">
         <Menu className="size-5" />
       </button>
-      {open && (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-black/30" onClick={() => setOpen(false)} />
-          <div className="absolute inset-y-0 left-0 flex w-72 flex-col gap-4 overflow-y-auto bg-white p-4 shadow-xl">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-primary">KoopKITA</span>
-              <button type="button" className="rounded-lg p-2 hover:bg-muted" onClick={() => setOpen(false)} aria-label="Tutup menu">
-                <X className="size-5" />
-              </button>
+      {open &&
+        // Rendered into <body>: the sticky header uses backdrop-filter, which would
+        // otherwise trap this fixed overlay inside the header's 56px height.
+        createPortal(
+          <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
+            <div className="absolute inset-y-0 left-0 flex w-[85vw] max-w-xs flex-col gap-4 overflow-y-auto bg-white p-4 shadow-xl pb-safe">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-primary">KoopKITA</span>
+                <button type="button" className="rounded-lg p-2 hover:bg-muted" onClick={() => setOpen(false)} aria-label="Tutup menu">
+                  <X className="size-5" />
+                </button>
+              </div>
+              <SidebarNav items={items} root={root} />
+              <div className="mt-auto">{footer}</div>
             </div>
-            <SidebarNav items={items} root={root} />
-            <div className="mt-auto">{footer}</div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

@@ -48,7 +48,7 @@ export function PayoutForm({ memberId, adminId, outstandingSen, entries }: { mem
         </FormField>
       </div>
       <FormField label="Rujukan transaksi bank" htmlFor="transaction_ref" required><Input id="transaction_ref" name="transaction_ref" /></FormField>
-      <ReceiptUpload userId={adminId} bucket="payout-proofs" name="proof_path" label="Bukti pindahan (pilihan)" required={false} />
+      <ReceiptUpload userId={adminId} bucket="payout-proofs" name="proof_path" label="Bukti pindahan (pilihan)" required={false} autofill={{ date: "payment_date", reference: "transaction_ref" }} />
       <FormField label="Catatan" htmlFor="notes"><Textarea id="notes" name="notes" rows={2} /></FormField>
       <label className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning-soft p-3 text-sm">
         <input type="checkbox" name="bank_transfer_confirmed" className="mt-0.5 size-4 accent-[var(--primary)]" />
