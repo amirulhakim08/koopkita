@@ -19,7 +19,7 @@ import { formatDate, formatRM, todayKL } from "@/lib/format";
 import { REVIEW_STATUS } from "@/lib/labels";
 import type { ShareTransaction } from "@/types/db";
 
-export const metadata = { title: "Modal Saham" };
+export const metadata = { title: "Modal Syer" };
 
 export default async function SharesPage() {
   const { userId } = await requireActiveMember();
@@ -36,17 +36,17 @@ export default async function SharesPage() {
 
   return (
     <>
-      <PageHeader title="Modal saham" description="Hanya transaksi yang diluluskan dikira dalam baki modal saham anda." />
+      <PageHeader title="Modal syer" description="Hanya transaksi yang diluluskan dikira dalam baki modal syer anda." />
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
         <StatCard emphasis label="Baki diluluskan" value={formatRM(balance?.approved_sen)} icon={Coins} />
         <StatCard label="Menunggu semakan" value={formatRM(balance?.pending_sen)} icon={Clock} hint={`${balance?.pending_count ?? 0} transaksi`} />
-        <StatCard label="Had modal saham" value={`${formatRM(minTotal)} – ${formatRM(maxTotal)}`} icon={Wallet} />
+        <StatCard label="Had modal syer" value={`${formatRM(minTotal)} – ${formatRM(maxTotal)}`} icon={Wallet} />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-5">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Hantar bayaran saham</CardTitle>
+            <CardTitle>Hantar bayaran syer</CardTitle>
             <CardDescription>Bayar ke akaun koperasi, kemudian muat naik resit. Minimum {formatRM(minPayment)}.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -90,7 +90,7 @@ export default async function SharesPage() {
                 ))}
               </TBody>
             </Table>
-          ) : <EmptyState icon={Coins} title="Tiada transaksi" description="Bayaran saham yang dihantar akan dipaparkan di sini." />}
+          ) : <EmptyState icon={Coins} title="Tiada transaksi" description="Bayaran syer yang dihantar akan dipaparkan di sini." />}
         </div>
       </div>
     </>

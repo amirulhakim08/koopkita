@@ -13,7 +13,7 @@ export async function submitSharePaymentAction(_prev: ActionState, formData: For
   return callRpc("submit_share_payment", {
     p_amount_sen: d.amount, p_payment_date: d.payment_date, p_transaction_ref: d.transaction_ref,
     p_receipt_path: d.receipt_path, p_idempotency_key: d.idempotency_key,
-  }, { success: "Bayaran saham dihantar untuk semakan.", revalidate: ["/ahli"] });
+  }, { success: "Bayaran syer dihantar untuk semakan.", revalidate: ["/ahli"] });
 }
 
 export async function reviewSharePaymentAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -23,7 +23,7 @@ export async function reviewSharePaymentAction(_prev: ActionState, formData: For
   const notes = (formData.get("notes") as string | null)?.trim() || null;
   if (!approve && !notes) return fail("Sila nyatakan sebab penolakan.", { notes: ["Sebab diperlukan"] });
   return callRpc("review_share_payment", { p_id: id.data, p_approve: approve, p_notes: notes }, {
-    success: approve ? "Bayaran saham diluluskan." : "Bayaran saham ditolak.", revalidate: ["/admin"],
+    success: approve ? "Bayaran syer diluluskan." : "Bayaran syer ditolak.", revalidate: ["/admin"],
   });
 }
 

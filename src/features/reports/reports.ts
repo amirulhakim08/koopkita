@@ -23,8 +23,8 @@ export const REPORTS: Record<string, Report> = {
     },
   },
   saham: {
-    title: "Laporan modal saham",
-    description: "Baki modal saham diluluskan dan menunggu bagi setiap ahli.",
+    title: "Laporan modal syer",
+    description: "Baki modal syer diluluskan dan menunggu bagi setiap ahli.",
     async build(sb) {
       const { data } = await sb.from("v_share_balances").select("*").order("membership_id");
       return {
@@ -34,8 +34,8 @@ export const REPORTS: Record<string, Report> = {
     },
   },
   "transaksi-saham": {
-    title: "Sejarah bayaran saham",
-    description: "Semua bayaran dan pelarasan modal saham.",
+    title: "Sejarah bayaran syer",
+    description: "Semua bayaran dan pelarasan modal syer.",
     async build(sb) {
       const { data } = await sb.from("share_transactions").select("*, profiles!share_transactions_member_id_fkey(full_name, membership_id)").order("created_at");
       return {

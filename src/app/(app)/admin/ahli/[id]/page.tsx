@@ -92,8 +92,8 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
           <Card>
             <CardHeader><CardTitle>Ringkasan</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <p className="flex justify-between"><span className="text-muted-foreground">Modal saham</span><strong>{formatRM(balance?.approved_sen)}</strong></p>
-              <p className="flex justify-between"><span className="text-muted-foreground">Saham menunggu</span><span>{formatRM(balance?.pending_sen)}</span></p>
+              <p className="flex justify-between"><span className="text-muted-foreground">Modal syer</span><strong>{formatRM(balance?.approved_sen)}</strong></p>
+              <p className="flex justify-between"><span className="text-muted-foreground">Syer menunggu</span><span>{formatRM(balance?.pending_sen)}</span></p>
               <p className="flex justify-between"><span className="text-muted-foreground">Komisen diperoleh</span><span>{formatRM(commission?.earned_sen)}</span></p>
               <p className="flex justify-between"><span className="text-muted-foreground">Komisen tertunggak</span><strong>{formatRM(commission?.outstanding_sen)}</strong></p>
               <p className="flex justify-between border-t pt-2"><span className="text-muted-foreground">Didaftar</span><span>{formatDateTime(m.created_at)}</span></p>

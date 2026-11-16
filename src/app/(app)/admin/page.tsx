@@ -39,7 +39,7 @@ export default async function AdminDashboard() {
 
   return (
     <>
-      <PageHeader title="Papan pemuka" description="Gambaran keseluruhan keahlian, modal saham, jualan korban dan komisen." />
+      <PageHeader title="Papan pemuka" description="Gambaran keseluruhan keahlian, modal syer, jualan korban dan komisen." />
       {!bank.accountNo && (
         <Alert tone="info" title="Akaun bank koperasi belum ditetapkan" className="mb-6">
           Jualan tetap boleh direkodkan, tetapi ahli tidak akan melihat nombor akaun koperasi pada arahan pembayaran.{" "}
@@ -50,7 +50,7 @@ export default async function AdminDashboard() {
         <div className="mb-6 grid gap-3 sm:grid-cols-3">
           {[
             { n: s.pending_approvals, label: "permohonan ahli menunggu", href: "/admin/ahli?status=menunggu", icon: UserPlus },
-            { n: s.pending_share_count, label: "bayaran saham menunggu", href: "/admin/saham", icon: Coins },
+            { n: s.pending_share_count, label: "bayaran syer menunggu", href: "/admin/saham", icon: Coins },
             { n: s.pending_sales, label: "jualan korban menunggu", href: "/admin/jualan?status=pending_review", icon: AlertCircle },
           ].filter((x) => x.n > 0).map((x) => (
             <Link key={x.href} href={x.href} className="flex items-center gap-3 rounded-xl border border-warning/25 bg-warning-soft p-4 text-sm hover:shadow-sm">
@@ -60,13 +60,13 @@ export default async function AdminDashboard() {
         </div>
       )}
 
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Keahlian & modal saham</h2>
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Keahlian & modal syer</h2>
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
         <StatCard label="Jumlah ahli" value={s.total_members} icon={Users} />
         <StatCard label="Ahli aktif" value={s.active_members} icon={UserCheck} />
         <StatCard label="Menunggu kelulusan" value={s.pending_approvals} icon={UserPlus} />
-        <StatCard emphasis label="Modal saham diluluskan" value={formatRM(s.approved_share_sen)} icon={Coins} />
-        <StatCard label="Bayaran saham menunggu" value={s.pending_share_count} hint={formatRM(s.pending_share_sen)} icon={Clock} />
+        <StatCard emphasis label="Modal syer diluluskan" value={formatRM(s.approved_share_sen)} icon={Coins} />
+        <StatCard label="Bayaran syer menunggu" value={s.pending_share_count} hint={formatRM(s.pending_share_sen)} icon={Clock} />
       </div>
 
       <h2 className="mb-3 mt-8 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Perniagaan korban</h2>
@@ -88,7 +88,7 @@ export default async function AdminDashboard() {
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <Card><CardHeader><CardTitle>Prestasi jualan (bulanan)</CardTitle></CardHeader><CardContent><SalesChart data={s.sales_by_month} /></CardContent></Card>
-        <Card><CardHeader><CardTitle>Pertumbuhan modal saham</CardTitle></CardHeader><CardContent><ShareGrowthChart data={s.share_capital_by_month} /></CardContent></Card>
+        <Card><CardHeader><CardTitle>Pertumbuhan modal syer</CardTitle></CardHeader><CardContent><ShareGrowthChart data={s.share_capital_by_month} /></CardContent></Card>
         <Card><CardHeader><CardTitle>Taburan komisen</CardTitle></CardHeader><CardContent><CommissionChart data={s.commission_by_type} /></CardContent></Card>
         <Card>
           <CardHeader><CardTitle>Kemajuan kempen</CardTitle></CardHeader>

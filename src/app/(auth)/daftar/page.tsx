@@ -81,7 +81,7 @@ export default function RegisterPage() {
           <label className="flex items-start gap-3 rounded-lg border bg-muted/40 p-3 text-sm">
             <input type="checkbox" id="consent" name="consent" className="mt-0.5 size-4 accent-[var(--primary)]" />
             <span>
-              Saya bersetuju data peribadi saya diproses oleh koperasi bagi tujuan pengurusan keahlian, saham dan
+              Saya bersetuju data peribadi saya diproses oleh koperasi bagi tujuan pengurusan keahlian, syer dan
               perniagaan koperasi selaras dengan Akta Perlindungan Data Peribadi 2010.
             </span>
           </label>

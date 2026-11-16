@@ -35,7 +35,7 @@ export default async function SettingsPage() {
         </Card>
         <div className="space-y-6">
           <Card>
-            <CardHeader><CardTitle>Had modal saham</CardTitle><CardDescription>Ikut undang-undang kecil koperasi.</CardDescription></CardHeader>
+            <CardHeader><CardTitle>Had modal syer</CardTitle><CardDescription>Ikut undang-undang kecil koperasi.</CardDescription></CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-3">
               <FormField label="Bayaran minimum (RM)" htmlFor="share_min_payment_sen"><Input id="share_min_payment_sen" name="share_min_payment_sen" inputMode="decimal" defaultValue={senToDecimal(num("share_min_payment_sen"))} /></FormField>
               <FormField label="Modal minimum (RM)" htmlFor="share_min_total_sen"><Input id="share_min_total_sen" name="share_min_total_sen" inputMode="decimal" defaultValue={senToDecimal(num("share_min_total_sen"))} /></FormField>

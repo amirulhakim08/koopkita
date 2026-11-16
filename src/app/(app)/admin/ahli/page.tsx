@@ -34,7 +34,7 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
         filters={[{ name: "status", value: status, label: "Status", options: [["menunggu", "Menunggu kelulusan (semua)"], ...Object.entries(MEMBER_STATUS).map(([k, v]) => [k, v.label] as [string, string])] }]} />
       {members?.length ? (
         <Table>
-          <THead><TR><TH>No. Ahli</TH><TH>Nama</TH><TH>Hubungan</TH><TH>Negeri</TH><TH className="text-right">Modal saham</TH><TH>Status</TH><TH>Daftar</TH></TR></THead>
+          <THead><TR><TH>No. Ahli</TH><TH>Nama</TH><TH>Hubungan</TH><TH>Negeri</TH><TH className="text-right">Modal syer</TH><TH>Status</TH><TH>Daftar</TH></TR></THead>
           <TBody>
             {members.map((m) => (
               <TR key={m.id}>

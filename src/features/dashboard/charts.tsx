@@ -38,7 +38,7 @@ export function ShareGrowthChart({ data }: { data: { month: string; amount_sen: 
         <XAxis dataKey="month" tick={axis} tickLine={false} axisLine={false} />
         <YAxis tick={axis} tickLine={false} axisLine={false} tickFormatter={rmShort} width={70} />
         <Tooltip formatter={(v) => formatRM(Number(v))} />
-        <Line type="monotone" dataKey="total" name="Modal saham kumulatif" stroke="var(--chart-1)" strokeWidth={2.5} dot={{ r: 3 }} />
+        <Line type="monotone" dataKey="total" name="Modal syer kumulatif" stroke="var(--chart-1)" strokeWidth={2.5} dot={{ r: 3 }} />
       </LineChart>
     </ResponsiveContainer>
   );

@@ -19,7 +19,7 @@ import { formatDate, formatDateTime, formatRM } from "@/lib/format";
 import { REVIEW_STATUS } from "@/lib/labels";
 import { searchTerm } from "@/lib/utils";
 
-export const metadata = { title: "Modal Saham" };
+export const metadata = { title: "Modal Syer" };
 
 type Row = {
   id: string; amount_sen: number; payment_date: string | null; transaction_ref: string | null; receipt_path: string | null; status: string;
@@ -45,7 +45,7 @@ export default async function AdminSharesPage({ searchParams }: { searchParams: 
 
   return (
     <>
-      <PageHeader title="Modal saham" description="Sahkan setiap bayaran dengan penyata bank koperasi sebelum meluluskan."
+      <PageHeader title="Modal syer" description="Sahkan setiap bayaran dengan penyata bank koperasi sebelum meluluskan."
         actions={<>
           <Button asChild variant="outline"><Link href="/api/eksport/saham">Eksport baki</Link></Button>
           <Button asChild variant="outline"><Link href="/api/eksport/transaksi-saham">Eksport transaksi</Link></Button>
@@ -77,7 +77,7 @@ export default async function AdminSharesPage({ searchParams }: { searchParams: 
 
       <div className="mt-8 grid gap-6 lg:grid-cols-3">
         <Card>
-          <CardHeader><CardTitle>Pelarasan modal saham</CardTitle><CardDescription>Untuk pembetulan. Transaksi diluluskan tidak boleh diubah atau dipadam.</CardDescription></CardHeader>
+          <CardHeader><CardTitle>Pelarasan modal syer</CardTitle><CardDescription>Untuk pembetulan. Transaksi diluluskan tidak boleh diubah atau dipadam.</CardDescription></CardHeader>
           <CardContent>
             <ActionForm action={createShareAdjustmentAction} className="space-y-3" resetOnSuccess>
               <IdempotencyKey />
@@ -98,7 +98,7 @@ export default async function AdminSharesPage({ searchParams }: { searchParams: 
           </CardContent>
         </Card>
         <Card className="lg:col-span-2">
-          <CardHeader><CardTitle>Baki modal saham tertinggi</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Baki modal syer tertinggi</CardTitle></CardHeader>
           <CardContent>
             {balances?.length ? (
               <ul className="divide-y text-sm">
@@ -109,7 +109,7 @@ export default async function AdminSharesPage({ searchParams }: { searchParams: 
                   </li>
                 ))}
               </ul>
-            ) : <p className="text-sm text-muted-foreground">Belum ada modal saham diluluskan.</p>}
+            ) : <p className="text-sm text-muted-foreground">Belum ada modal syer diluluskan.</p>}
           </CardContent>
         </Card>
       </div>
