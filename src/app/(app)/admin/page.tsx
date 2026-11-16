@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  AlertCircle, Beef, BadgeCheck, CircleDollarSign, Clock, HandCoins, Layers, PiggyBank, ShoppingBag, Trophy, UserCheck, UserPlus, Users, Wallet,
+  AlertCircle, Beef, BadgeCheck, CircleDollarSign, Clock, HandCoins, Layers, Coins, ShoppingBag, Trophy, UserCheck, UserPlus, Users, Wallet,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
@@ -50,7 +50,7 @@ export default async function AdminDashboard() {
         <div className="mb-6 grid gap-3 sm:grid-cols-3">
           {[
             { n: s.pending_approvals, label: "permohonan ahli menunggu", href: "/admin/ahli?status=menunggu", icon: UserPlus },
-            { n: s.pending_share_count, label: "bayaran saham menunggu", href: "/admin/saham", icon: PiggyBank },
+            { n: s.pending_share_count, label: "bayaran saham menunggu", href: "/admin/saham", icon: Coins },
             { n: s.pending_sales, label: "jualan korban menunggu", href: "/admin/jualan?status=pending_review", icon: AlertCircle },
           ].filter((x) => x.n > 0).map((x) => (
             <Link key={x.href} href={x.href} className="flex items-center gap-3 rounded-xl border border-warning/25 bg-warning-soft p-4 text-sm hover:shadow-sm">
@@ -65,7 +65,7 @@ export default async function AdminDashboard() {
         <StatCard label="Jumlah ahli" value={s.total_members} icon={Users} />
         <StatCard label="Ahli aktif" value={s.active_members} icon={UserCheck} />
         <StatCard label="Menunggu kelulusan" value={s.pending_approvals} icon={UserPlus} />
-        <StatCard emphasis label="Modal saham diluluskan" value={formatRM(s.approved_share_sen)} icon={PiggyBank} />
+        <StatCard emphasis label="Modal saham diluluskan" value={formatRM(s.approved_share_sen)} icon={Coins} />
         <StatCard label="Bayaran saham menunggu" value={s.pending_share_count} hint={formatRM(s.pending_share_sen)} icon={Clock} />
       </div>
 

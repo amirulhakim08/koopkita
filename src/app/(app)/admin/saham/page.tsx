@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PiggyBank } from "lucide-react";
+import { Coins } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { SearchBar } from "@/components/search-bar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,7 +72,7 @@ export default async function AdminSharesPage({ searchParams }: { searchParams: 
               ))}
             </TBody>
           </Table>
-        ) : <EmptyState icon={PiggyBank} title="Tiada bayaran menunggu" />}
+        ) : <EmptyState icon={Coins} title="Tiada bayaran menunggu" />}
       </section>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-3">

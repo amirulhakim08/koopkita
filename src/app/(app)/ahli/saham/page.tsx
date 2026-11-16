@@ -1,4 +1,4 @@
-import { Clock, PiggyBank, Wallet } from "lucide-react";
+import { Clock, Coins, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +38,7 @@ export default async function SharesPage() {
     <>
       <PageHeader title="Modal saham" description="Hanya transaksi yang diluluskan dikira dalam baki modal saham anda." />
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-        <StatCard emphasis label="Baki diluluskan" value={formatRM(balance?.approved_sen)} icon={PiggyBank} />
+        <StatCard emphasis label="Baki diluluskan" value={formatRM(balance?.approved_sen)} icon={Coins} />
         <StatCard label="Menunggu semakan" value={formatRM(balance?.pending_sen)} icon={Clock} hint={`${balance?.pending_count ?? 0} transaksi`} />
         <StatCard label="Had modal saham" value={`${formatRM(minTotal)} – ${formatRM(maxTotal)}`} icon={Wallet} />
       </div>
@@ -90,7 +90,7 @@ export default async function SharesPage() {
                 ))}
               </TBody>
             </Table>
-          ) : <EmptyState icon={PiggyBank} title="Tiada transaksi" description="Bayaran saham yang dihantar akan dipaparkan di sini." />}
+          ) : <EmptyState icon={Coins} title="Tiada transaksi" description="Bayaran saham yang dihantar akan dipaparkan di sini." />}
         </div>
       </div>
     </>

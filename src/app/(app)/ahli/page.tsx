@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Beef, BadgeCheck, CircleDollarSign, HandCoins, PiggyBank, Plus, ShoppingBag, Wallet } from "lucide-react";
+import { Beef, BadgeCheck, CircleDollarSign, HandCoins, Coins, Plus, ShoppingBag, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,7 @@ export default async function MemberDashboard() {
       />
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatCard emphasis label="Modal saham diluluskan" value={formatRM(s.approved_share_sen)} icon={PiggyBank}
+        <StatCard emphasis label="Modal saham diluluskan" value={formatRM(s.approved_share_sen)} icon={Coins}
           hint={Number(s.pending_share_sen) > 0 ? `${formatRM(s.pending_share_sen)} menunggu semakan` : undefined} />
         <StatCard label="Jualan disahkan" value={s.confirmed_sales ?? 0} icon={BadgeCheck} hint={`${s.shares_sold ?? 0} bahagian dijual`} />
         <StatCard label="Nilai jualan" value={formatRM(s.sales_value_sen)} icon={ShoppingBag} />

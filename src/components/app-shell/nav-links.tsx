@@ -3,13 +3,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
 import {
-  Bell, Beef, FileSpreadsheet, Home, LayoutDashboard, Megaphone, Menu, PiggyBank, Receipt, Settings, ShieldCheck, User, Users, Wallet, X,
+  Bell, Beef, FileSpreadsheet, Home, LayoutDashboard, Megaphone, Menu, Coins, Receipt, Settings, ShieldCheck, User, Users, Wallet, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavItem } from "./nav-config";
 
 const ICONS = {
-  home: Home, beef: Beef, piggy: PiggyBank, wallet: Wallet, bell: Bell, user: User, dashboard: LayoutDashboard,
+  home: Home, beef: Beef, coins: Coins, wallet: Wallet, bell: Bell, user: User, dashboard: LayoutDashboard,
   users: Users, receipt: Receipt, file: FileSpreadsheet, megaphone: Megaphone, shield: ShieldCheck, settings: Settings,
 } as const;
 
