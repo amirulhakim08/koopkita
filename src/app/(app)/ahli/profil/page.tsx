@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ActionForm, SubmitButton } from "@/components/action-form";
 import { FormField } from "@/components/form-field";
+import { BankSelect } from "@/components/bank-select";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/badge";
 import { requireActiveMember } from "@/lib/auth";
@@ -33,7 +34,7 @@ export default async function ProfilePage() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Maklumat peribadi</CardTitle>
-            <CardDescription>Maklumat ini hanya boleh dilihat oleh anda dan Super Admin.</CardDescription>
+            <CardDescription>Maklumat ini hanya boleh dilihat oleh anda dan Super Admin. Akaun bank yang lengkap dan sah diperlukan untuk memohon bayaran komisen.</CardDescription>
           </CardHeader>
           <CardContent>
             <ActionForm action={updateOwnProfileAction} className="space-y-4">
@@ -47,7 +48,7 @@ export default async function ProfilePage() {
                 <FormField label="Poskod" htmlFor="postcode" required><Input id="postcode" name="postcode" inputMode="numeric" defaultValue={p.postcode ?? ""} /></FormField>
               </div>
               <div className="grid gap-4 sm:grid-cols-3">
-                <FormField label="Nama bank" htmlFor="bank_name"><Input id="bank_name" name="bank_name" defaultValue={p.bank_name ?? ""} /></FormField>
+                <FormField label="Nama bank" htmlFor="bank_name"><BankSelect defaultValue={p.bank_name} /></FormField>
                 <FormField label="No. akaun" htmlFor="bank_account_no"><Input id="bank_account_no" name="bank_account_no" inputMode="numeric" defaultValue={p.bank_account_no ?? ""} /></FormField>
                 <FormField label="Nama pemegang akaun" htmlFor="bank_account_holder"><Input id="bank_account_holder" name="bank_account_holder" defaultValue={p.bank_account_holder ?? ""} /></FormField>
               </div>

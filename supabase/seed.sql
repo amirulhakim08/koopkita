@@ -50,7 +50,7 @@ begin
   v_m1 := pg_temp.dev_user('ahli1@koopkita.test', 'DevAhli#2026',
     '{"full_name":"Ahmad Contoh bin Dev","phone":"0121111111","ic_number":"900101021111","address":"No 1, Jalan Contoh","state":"Kedah","postcode":"06000","bank_name":"Bank Contoh","bank_account_no":"1111111111","bank_account_holder":"Ahmad Contoh bin Dev"}');
   v_m2 := pg_temp.dev_user('ahli2@koopkita.test', 'DevAhli#2026',
-    '{"full_name":"Siti Contoh binti Dev","phone":"0122222222","ic_number":"910202022222","address":"No 2, Jalan Contoh","state":"Perlis","postcode":"01000"}');
+    '{"full_name":"Siti Contoh binti Dev","phone":"0122222222","ic_number":"910202022222","address":"No 2, Jalan Contoh","state":"Perlis","postcode":"01000","bank_name":"Bank Islam","bank_account_no":"2222222222","bank_account_holder":"Siti Contoh binti Dev"}');
   v_m3 := pg_temp.dev_user('ahli3@koopkita.test', 'DevAhli#2026',
     '{"full_name":"Lim Contoh Dev","phone":"0123333333","ic_number":"920303023333","address":"No 3, Jalan Contoh","state":"Pulau Pinang","postcode":"10000"}');
   perform pg_temp.dev_user('pemohon@koopkita.test', 'DevAhli#2026',

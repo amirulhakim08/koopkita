@@ -26,7 +26,7 @@ export default async function SettingsPage() {
             <CardDescription>Dipaparkan kepada ahli pada skrin arahan pembayaran. Masukkan butiran rasmi sahaja.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {!str("coop_bank_account_no") && <Alert tone="warning">Belum dikonfigurasi — jualan korban dan pembayaran tidak boleh dibuat.</Alert>}
+            {!str("coop_bank_account_no") && <Alert tone="info">Belum ditetapkan. Jualan tetap boleh direkodkan; ahli akan diminta mengikut arahan pegawai koperasi untuk pembayaran.</Alert>}
             <FormField label="Nama bank" htmlFor="coop_bank_name"><Input id="coop_bank_name" name="coop_bank_name" defaultValue={str("coop_bank_name")} /></FormField>
             <FormField label="Nama pemegang akaun" htmlFor="coop_bank_account_name"><Input id="coop_bank_account_name" name="coop_bank_account_name" defaultValue={str("coop_bank_account_name")} /></FormField>
             <FormField label="Nombor akaun" htmlFor="coop_bank_account_no"><Input id="coop_bank_account_no" name="coop_bank_account_no" inputMode="numeric" defaultValue={str("coop_bank_account_no")} /></FormField>

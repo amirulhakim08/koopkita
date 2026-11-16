@@ -55,3 +55,16 @@ export const MALAYSIAN_STATES = [
   "Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sembilan", "Pahang", "Perak", "Perlis", "Pulau Pinang",
   "Sabah", "Sarawak", "Selangor", "Terengganu", "W.P. Kuala Lumpur", "W.P. Labuan", "W.P. Putrajaya",
 ] as const;
+
+export const MALAYSIAN_BANKS = [
+  "Maybank", "CIMB Bank", "Public Bank", "RHB Bank", "Hong Leong Bank", "AmBank", "Bank Islam", "Bank Rakyat",
+  "BSN (Bank Simpanan Nasional)", "Affin Bank", "Alliance Bank", "Agrobank", "Bank Muamalat", "MBSB Bank",
+  "OCBC Bank", "UOB Malaysia", "HSBC Bank Malaysia", "Standard Chartered", "Al Rajhi Bank", "Kuwait Finance House",
+] as const;
+
+export const PAYOUT_REQUEST_STATUS: Record<string, { label: string; tone: Tone }> = {
+  pending: { label: "Sedang Diproses", tone: "warning" },
+  paid: { label: "Telah Dibayar", tone: "success" },
+  rejected: { label: "Ditolak", tone: "danger" },
+  cancelled: { label: "Dibatalkan", tone: "neutral" },
+};

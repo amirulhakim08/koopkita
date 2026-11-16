@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ActionForm, SubmitButton } from "@/components/action-form";
 import { FormField } from "@/components/form-field";
+import { BankSelect } from "@/components/bank-select";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
@@ -60,7 +61,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
                   <FormField label="Poskod" htmlFor="postcode" required><Input id="postcode" name="postcode" defaultValue={m.postcode ?? ""} /></FormField>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-3">
-                  <FormField label="Nama bank" htmlFor="bank_name"><Input id="bank_name" name="bank_name" defaultValue={m.bank_name ?? ""} /></FormField>
+                  <FormField label="Nama bank" htmlFor="bank_name"><BankSelect defaultValue={m.bank_name} /></FormField>
                   <FormField label="No. akaun" htmlFor="bank_account_no"><Input id="bank_account_no" name="bank_account_no" defaultValue={m.bank_account_no ?? ""} /></FormField>
                   <FormField label="Pemegang akaun" htmlFor="bank_account_holder"><Input id="bank_account_holder" name="bank_account_holder" defaultValue={m.bank_account_holder ?? ""} /></FormField>
                 </div>

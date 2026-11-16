@@ -41,8 +41,9 @@ export default async function AdminDashboard() {
     <>
       <PageHeader title="Papan pemuka" description="Gambaran keseluruhan keahlian, modal saham, jualan korban dan komisen." />
       {!bank.accountNo && (
-        <Alert tone="warning" title="Akaun bank koperasi belum dikonfigurasi" className="mb-6">
-          Ahli tidak boleh merekod jualan sehingga akaun bank rasmi ditetapkan. <Link href="/admin/tetapan" className="font-semibold underline">Tetapkan sekarang</Link>
+        <Alert tone="info" title="Akaun bank koperasi belum ditetapkan" className="mb-6">
+          Jualan tetap boleh direkodkan, tetapi ahli tidak akan melihat nombor akaun koperasi pada arahan pembayaran.{" "}
+          <Link href="/admin/tetapan" className="font-semibold underline">Tetapkan</Link>
         </Alert>
       )}
       {(s.pending_approvals > 0 || s.pending_share_count > 0 || s.pending_sales > 0) && (

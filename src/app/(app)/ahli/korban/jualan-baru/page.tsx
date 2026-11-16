@@ -32,11 +32,11 @@ export default async function NewSalePage({ searchParams }: { searchParams: Prom
     <>
       <PageHeader title="Tambah jualan korban" description="Tempah slot, rekod pembeli dan peserta. Pelanggan membayar terus kepada koperasi." />
       <div className="mb-6"><BankDetails bank={bank} /></div>
-      {options.length && bank.accountNo ? (
+      {options.length ? (
         <SaleForm campaigns={options} defaultCampaignId={kempen} />
       ) : (
-        <EmptyState icon={Beef} title={options.length ? "Pembayaran belum boleh diterima" : "Tiada kempen dibuka"}
-          description={options.length ? "Akaun bank rasmi koperasi belum dikonfigurasi." : "Tiada kempen korban yang dibuka untuk jualan pada masa ini."}
+        <EmptyState icon={Beef} title="Tiada kempen dibuka"
+          description="Tiada kempen korban yang dibuka untuk jualan pada masa ini."
           action={<Button asChild variant="outline"><Link href="/ahli/korban">Kembali</Link></Button>} />
       )}
     </>

@@ -5,8 +5,9 @@ import type { BankSettings } from "@/lib/queries";
 export function BankDetails({ bank, amountLabel }: { bank: BankSettings; amountLabel?: string }) {
   if (!bank.accountNo) {
     return (
-      <Alert tone="warning" title="Akaun bank koperasi belum dikonfigurasi">
-        Super Admin perlu menetapkan akaun bank rasmi koperasi sebelum pembayaran boleh dibuat.
+      <Alert tone="info" title="Arahan pembayaran">
+        Pelanggan membayar terus kepada koperasi mengikut arahan pegawai koperasi. Ahli tidak menerima bayaran pelanggan.
+        {amountLabel && <> Jumlah perlu dibayar: <strong>{amountLabel}</strong>.</>}
       </Alert>
     );
   }

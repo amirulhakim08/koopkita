@@ -4,7 +4,7 @@ import { ActionForm, FieldError, IdempotencyKey, SubmitButton } from "@/componen
 import { FormField } from "@/components/form-field";
 import { Input, Textarea } from "@/components/ui/input";
 import { ReceiptUpload } from "@/components/receipt-upload";
-import { recordPayoutAction, reversePayoutAction } from "@/features/commission/actions";
+import { recordPayoutAction, rejectPayoutRequestAction, reversePayoutAction } from "@/features/commission/actions";
 import { formatDate, formatRM, senToDecimal, todayKL } from "@/lib/format";
 
 type Entry = { id: string; description: string; created_at: string; unpaid_sen: number };
@@ -66,6 +66,16 @@ export function ReversePayoutForm({ payoutId }: { payoutId: string }) {
       <input type="hidden" name="payout_id" value={payoutId} />
       <Input name="reason" placeholder="Sebab pembalikan" className="h-8 text-xs" aria-label="Sebab pembalikan" />
       <SubmitButton size="sm" variant="outline" className="text-danger" pendingText="…">Balikkan</SubmitButton>
+    </ActionForm>
+  );
+}
+
+export function RejectPayoutRequestForm({ requestId }: { requestId: string }) {
+  return (
+    <ActionForm action={rejectPayoutRequestAction} showInlineError={false} className="flex gap-1">
+      <input type="hidden" name="request_id" value={requestId} />
+      <Input name="notes" placeholder="Sebab tolak" className="h-8 text-xs" aria-label="Sebab tolak" />
+      <SubmitButton size="sm" variant="outline" className="text-danger" pendingText="…">Tolak</SubmitButton>
     </ActionForm>
   );
 }

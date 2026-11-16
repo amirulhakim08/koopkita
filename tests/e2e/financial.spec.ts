@@ -78,11 +78,21 @@ test("qurban sale: reserve → upload proof → admin verifies & approves → RM
   await page.goto("/ahli/komisen");
   await expect(page.getByRole("row").filter({ hasText: saleNo }).getByText("RM 40.00")).toBeVisible();
 
-  // admin records a partial payout of RM15
+  // member requests a transfer to their (valid) bank account
+  const pending = page.getByRole("button", { name: "Batal permohonan" });
+  if (await pending.count()) {
+    await pending.click(); // clear a request left by a previous run
+    await expect(page.getByText("Permohonan dibatalkan.")).toBeVisible();
+  }
+  await page.getByRole("button", { name: /Mohon pemindahan RM/ }).click();
+  await expect(page.getByText("Permohonan bayaran dihantar")).toBeVisible();
+
+  // admin sees the request and records a partial payout of RM15
   await logout(page);
   await login(page, ADMIN);
   await page.goto("/admin/komisen");
-  await page.getByRole("row").filter({ hasText: "Siti Contoh" }).getByRole("link").click();
+  await expect(page.getByRole("row").filter({ hasText: "Siti Contoh" }).getByText("2222222222")).toBeVisible();
+  await page.getByRole("row").filter({ hasText: "Siti Contoh" }).getByRole("link", { name: "Rekod pemindahan" }).click();
   await page.waitForURL(/\/admin\/komisen\/[0-9a-f-]{36}$/);
   const outstandingCard = page.getByText("Tertunggak", { exact: true }).locator("..").locator("..");
   const toSen = (t: string | null) => Math.round(Number(t!.match(/RM\s?([\d,.]+)/)![1].replace(/,/g, "")) * 100);

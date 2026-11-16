@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveMember } from "@/lib/auth";
 import { fail, parseDbError, type ActionState } from "@/lib/errors";
-import { fieldErrors, icSchema, profileUpdateSchema, reasonSchema } from "@/lib/validation";
+import { adminProfileUpdateSchema, fieldErrors, profileUpdateSchema, reasonSchema } from "@/lib/validation";
 import { callRpc } from "@/lib/rpc";
 import { z } from "zod";
 
@@ -58,8 +58,7 @@ export async function setSuspensionAction(_prev: ActionState, formData: FormData
 export async function adminUpdateMemberAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const id = idSchema.safeParse(formData.get("user_id"));
   if (!id.success) return fail("Permintaan tidak sah.");
-  const schema = profileUpdateSchema.extend({ ic_number: icSchema });
-  const parsed = schema.safeParse(Object.fromEntries(formData));
+  const parsed = adminProfileUpdateSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fail("Sila semak maklumat.", fieldErrors(parsed.error));
   const d = parsed.data;
   return callRpc("admin_update_member", {
