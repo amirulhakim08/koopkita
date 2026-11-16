@@ -52,7 +52,7 @@ export const profileFields = {
   bank_name: z.preprocess(emptyToUndef, z.string().max(100).optional()),
   bank_account_no: z.preprocess(
     (v) => (typeof v === "string" ? (v.replace(/[\s-]/g, "") || undefined) : v),
-    z.string().regex(/^[0-9]{6,20}$/, "Nombor akaun tidak sah").optional(),
+    z.string().regex(/^[0-9]{6,20}$/, "Nombor akaun mesti 6–20 digit").optional(),
   ),
   bank_account_holder: z.preprocess(emptyToUndef, z.string().max(150).optional()),
 };
@@ -66,9 +66,21 @@ export const registerSchema = z
     confirm_password: z.string(),
     consent: z.literal("on", { message: "Sila bersetuju dengan notis privasi" }),
   })
-  .refine((d) => d.password === d.confirm_password, { path: ["confirm_password"], message: "Kata laluan tidak sepadan" });
+  .refine((d) => d.password === d.confirm_password, { path: ["confirm_password"], message: "Kata laluan tidak sepadan" })
+  .superRefine(bankComplete);
 
-export const profileUpdateSchema = z.object(profileFields);
+/** Bank details are optional, but when any field is given all three must be valid. */
+export function bankComplete<T extends { bank_name?: string; bank_account_no?: string; bank_account_holder?: string }>(d: T, ctx: z.RefinementCtx) {
+  const any = d.bank_name || d.bank_account_no || d.bank_account_holder;
+  if (!any) return;
+  if (!d.bank_name) ctx.addIssue({ code: "custom", path: ["bank_name"], message: "Sila pilih bank" });
+  if (!d.bank_account_no) ctx.addIssue({ code: "custom", path: ["bank_account_no"], message: "Nombor akaun diperlukan" });
+  if (!d.bank_account_holder || d.bank_account_holder.length < 3)
+    ctx.addIssue({ code: "custom", path: ["bank_account_holder"], message: "Nama pemegang akaun diperlukan" });
+}
+
+export const profileUpdateSchema = z.object(profileFields).superRefine(bankComplete);
+export const adminProfileUpdateSchema = z.object({ ...profileFields, ic_number: icSchema }).superRefine(bankComplete);
 
 export const sharePaymentSchema = z.object({
   amount: moneySchema,

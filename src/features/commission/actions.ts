@@ -25,3 +25,24 @@ export async function reversePayoutAction(_prev: ActionState, formData: FormData
     success: "Bayaran dibalikkan.", revalidate: ["/admin/komisen"],
   });
 }
+
+export async function requestPayoutAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const notes = String(formData.get("notes") ?? "").trim().slice(0, 500) || null;
+  return callRpc("request_commission_payout", { p_notes: notes }, {
+    success: "Permohonan bayaran dihantar. Admin akan membuat pemindahan ke akaun bank anda.", revalidate: ["/ahli", "/admin"],
+  });
+}
+
+export async function cancelPayoutRequestAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const id = z.string().uuid().safeParse(formData.get("request_id"));
+  if (!id.success) return fail("Permintaan tidak sah.");
+  return callRpc("cancel_payout_request", { p_id: id.data }, { success: "Permohonan dibatalkan.", revalidate: ["/ahli", "/admin"] });
+}
+
+export async function rejectPayoutRequestAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const id = z.string().uuid().safeParse(formData.get("request_id"));
+  const notes = reasonSchema.safeParse(formData.get("notes"));
+  if (!id.success) return fail("Permintaan tidak sah.");
+  if (!notes.success) return fail("Sila nyatakan sebab penolakan.", { notes: ["Sebab diperlukan"] });
+  return callRpc("reject_payout_request", { p_id: id.data, p_notes: notes.data }, { success: "Permohonan ditolak.", revalidate: ["/admin", "/ahli"] });
+}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { ActionForm, SubmitButton } from "@/components/action-form";
 import { FormField } from "@/components/form-field";
+import { BankSelect } from "@/components/bank-select";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { registerAction } from "@/features/auth/actions";
 import { MALAYSIAN_STATES } from "@/lib/labels";
@@ -47,10 +48,10 @@ export default function RegisterPage() {
         </fieldset>
 
         <fieldset className="space-y-4">
-          <legend className="mb-2 text-sm font-semibold text-primary">Akaun bank (pilihan — untuk bayaran komisen)</legend>
+          <legend className="mb-2 text-sm font-semibold text-primary">Akaun bank (pilihan — diperlukan untuk menerima bayaran komisen)</legend>
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label="Nama bank" htmlFor="bank_name">
-              <Input id="bank_name" name="bank_name" />
+              <BankSelect />
             </FormField>
             <FormField label="No. akaun" htmlFor="bank_account_no">
               <Input id="bank_account_no" name="bank_account_no" inputMode="numeric" />

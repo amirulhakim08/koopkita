@@ -89,7 +89,8 @@ function fakeIc() {
 
 /** Simulates Supabase Auth sign-up (the on_auth_user_created trigger builds the profile). */
 export async function signUp(pool: Pool, email: string, opts: { confirmed?: boolean; meta?: Record<string, unknown> } = {}) {
-  const meta = { full_name: `Ahli Ujian ${email.split("@")[0]}`, phone: "0123456789", ic_number: fakeIc(), state: "Kedah", postcode: "05000", ...opts.meta };
+  const meta = { full_name: `Ahli Ujian ${email.split("@")[0]}`, phone: "0123456789", ic_number: fakeIc(), state: "Kedah", postcode: "05000",
+    bank_name: "Maybank", bank_account_no: "112233445566", bank_account_holder: "Ahli Ujian", ...opts.meta };
   const { rows } = await pool.query(
     `insert into auth.users (email, raw_user_meta_data, email_confirmed_at) values ($1, $2, $3) returning id`,
     [email, meta, opts.confirmed === false ? null : new Date()],

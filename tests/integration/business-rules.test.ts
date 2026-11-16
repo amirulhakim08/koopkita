@@ -262,13 +262,13 @@ describe("qurban slots", () => {
     await asUser(pool, m1, `select public.cancel_qurban_sale($1, 'ujian')`, [sale]);
   });
 
-  it("requires the cooperative bank account to be configured", async () => {
+  it("allows sales before the cooperative bank account is configured", async () => {
     const pool2 = await freshDatabase("koopkita_nobank");
     try {
       const a = await createAdmin(pool2);
       const c = await createOpenCampaign(pool2, a, 1);
       const m = await createActiveMember(pool2, a, "x@kita.test");
-      await expect(createSale(pool2, m, c, 1)).rejects.toThrow(/CONFIG_REQUIRED/);
+      await expect(createSale(pool2, m, c, 1)).resolves.toMatch(/^[0-9a-f-]{36}$/);
     } finally {
       await pool2.end();
     }
@@ -477,6 +477,62 @@ describe("commission payouts", () => {
     ).rejects.toThrow(/FORBIDDEN/);
     const rows = await asUser(pool, member, `select * from public.commission_payouts`);
     expect(rows.length).toBe(3);
+  });
+});
+
+describe("commission payout requests", () => {
+  let member: string;
+  let nobank: string;
+
+  beforeAll(async () => {
+    const campaign = await createOpenCampaign(pool, admin, 1, 2032);
+    member = await createActiveMember(pool, admin, "mohon@kita.test");
+    nobank = await (async () => {
+      const id = await signUp(pool, "tiadabank@kita.test", { meta: { bank_name: "", bank_account_no: "", bank_account_holder: "" } });
+      await asUser(pool, admin, `select public.approve_member($1, null)`, [id]);
+      return id;
+    })();
+    await payAndApprove(pool, admin, member, await createSale(pool, member, campaign, 2)); // RM80
+    await payAndApprove(pool, admin, nobank, await createSale(pool, nobank, campaign, 1)); // RM40
+  });
+
+  it("requires complete, valid bank details to request or receive a transfer", async () => {
+    await expect(asUser(pool, nobank, `select public.request_commission_payout(null)`)).rejects.toThrow(/akaun bank yang sah/);
+    await expect(asUser(pool, admin,
+      `select public.record_commission_payout($1, 4000, current_date, 'TRF-NB', null, null, true, null, null)`, [nobank]),
+    ).rejects.toThrow(/akaun bank yang sah/);
+    // invalid account number cannot even be saved on the profile
+    await expect(asUser(pool, nobank, `update public.profiles set bank_name = 'Maybank', bank_account_no = '12AB', bank_account_holder = 'Nama' where id = $1`, [nobank])).rejects.toThrow(/check/);
+  });
+
+  it("member requests the outstanding amount once; admin payout settles the request", async () => {
+    const [{ id }] = await asUser<{ id: string }>(pool, member, `select public.request_commission_payout('Sila pindah') as id`);
+    await expect(asUser(pool, member, `select public.request_commission_payout(null)`)).rejects.toThrow(/sedang diproses/);
+    const req = (await pool.query(`select amount_sen::int, bank_account_no, status from public.commission_payout_requests where id = $1`, [id])).rows[0];
+    expect(req).toEqual({ amount_sen: 8000, bank_account_no: "112233445566", status: "pending" });
+    // other members cannot see it
+    expect(await asUser(pool, nobank, `select * from public.commission_payout_requests`)).toHaveLength(0);
+
+    // a partial transfer keeps the request open
+    await asUser(pool, admin, `select public.record_commission_payout($1, 3000, current_date, 'TRF-R1', null, null, true, null, null)`, [member]);
+    expect((await pool.query(`select status from public.commission_payout_requests where id = $1`, [id])).rows[0].status).toBe("pending");
+    await asUser(pool, admin, `select public.record_commission_payout($1, 5000, current_date, 'TRF-R2', null, null, true, null, null)`, [member]);
+    const done = (await pool.query(`select status, payout_id from public.commission_payout_requests where id = $1`, [id])).rows[0];
+    expect(done.status).toBe("paid");
+    expect(done.payout_id).toBeTruthy();
+    await expect(asUser(pool, member, `select public.request_commission_payout(null)`)).rejects.toThrow(/Tiada baki/);
+  });
+
+  it("members can cancel and admins can reject requests; records are never deleted", async () => {
+    await pool.query(`update public.profiles set bank_name = 'CIMB', bank_account_no = '8000123456', bank_account_holder = 'Ahli Tanpa Bank' where id = $1`, [nobank]);
+    const [{ id: r1 }] = await asUser<{ id: string }>(pool, nobank, `select public.request_commission_payout(null) as id`);
+    await asUser(pool, nobank, `select public.cancel_payout_request($1)`, [r1]);
+    const [{ id: r2 }] = await asUser<{ id: string }>(pool, nobank, `select public.request_commission_payout(null) as id`);
+    await expect(asUser(pool, nobank, `select public.reject_payout_request($1, 'x')`, [r2])).rejects.toThrow(/FORBIDDEN/);
+    await asUser(pool, admin, `select public.reject_payout_request($1, 'Nama pemegang tidak sepadan')`, [r2]);
+    const rows = (await pool.query(`select status from public.commission_payout_requests where member_id = $1 order by created_at`, [nobank])).rows;
+    expect(rows.map((r) => r.status)).toEqual(["cancelled", "rejected"]);
+    await expect(pool.query(`delete from public.commission_payout_requests where id = $1`, [r1])).rejects.toThrow(/IMMUTABLE_RECORD/);
   });
 });
 

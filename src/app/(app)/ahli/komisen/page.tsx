@@ -10,16 +10,18 @@ import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatRM } from "@/lib/format";
 import { COMMISSION_TYPE } from "@/lib/labels";
 import type { CommissionEntry, CommissionPayout } from "@/types/db";
+import { PayoutRequestCard, type PayoutRequest } from "@/features/commission/payout-request";
 
 export const metadata = { title: "Komisen" };
 
 export default async function CommissionPage() {
-  const { userId } = await requireActiveMember();
+  const { userId, profile } = await requireActiveMember();
   const supabase = await createClient();
-  const [{ data: summary }, { data: ledger }, { data: payouts }] = await Promise.all([
+  const [{ data: summary }, { data: ledger }, { data: payouts }, { data: requests }] = await Promise.all([
     supabase.from("v_commission_summary").select("*").eq("member_id", userId).maybeSingle(),
     supabase.from("commission_ledger").select("*, qurban_sales(sale_no)").eq("member_id", userId).order("created_at", { ascending: false }),
     supabase.from("commission_payouts").select("*").eq("member_id", userId).order("created_at", { ascending: false }),
+    supabase.from("commission_payout_requests").select("*").eq("member_id", userId).order("created_at", { ascending: false }),
   ]);
   return (
     <>
@@ -29,6 +31,10 @@ export default async function CommissionPage() {
           hint={Number(summary?.reversed_sen) > 0 ? `Selepas pembalikan ${formatRM(summary?.reversed_sen)}` : undefined} />
         <StatCard label="Telah dibayar" value={formatRM(summary?.paid_sen)} icon={HandCoins} />
         <StatCard emphasis label="Tertunggak" value={formatRM(summary?.outstanding_sen)} icon={Wallet} />
+      </div>
+
+      <div className="mt-6 max-w-2xl">
+        <PayoutRequestCard profile={profile} outstandingSen={Number(summary?.outstanding_sen ?? 0)} requests={(requests ?? []) as PayoutRequest[]} />
       </div>
 
       <section className="mt-8 space-y-3">

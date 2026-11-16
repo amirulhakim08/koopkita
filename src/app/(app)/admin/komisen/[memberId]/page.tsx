@@ -15,6 +15,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatRM } from "@/lib/format";
 import { COMMISSION_TYPE } from "@/lib/labels";
 import type { CommissionEntry, CommissionPayout } from "@/types/db";
+import { hasValidBank } from "@/features/commission/payout-request";
 
 export const metadata = { title: "Komisen Ahli" };
 
@@ -23,12 +24,13 @@ export default async function MemberCommissionPage({ params }: { params: Promise
   const { memberId } = await params;
   if (!z.string().uuid().safeParse(memberId).success) notFound();
   const supabase = await createClient();
-  const [{ data: summary }, { data: profile }, { data: ledger }, { data: payouts }, { data: items }] = await Promise.all([
+  const [{ data: summary }, { data: profile }, { data: ledger }, { data: payouts }, { data: items }, { data: pendingReq }] = await Promise.all([
     supabase.from("v_commission_summary").select("*").eq("member_id", memberId).maybeSingle(),
     supabase.from("profiles").select("full_name, membership_id, bank_name, bank_account_no, bank_account_holder").eq("id", memberId).maybeSingle(),
     supabase.from("commission_ledger").select("*").eq("member_id", memberId).order("created_at"),
     supabase.from("commission_payouts").select("*").eq("member_id", memberId).order("created_at", { ascending: false }),
     supabase.from("commission_payout_items").select("ledger_entry_id, amount_sen, commission_payouts!inner(member_id)").eq("commission_payouts.member_id", memberId),
+    supabase.from("commission_payout_requests").select("*").eq("member_id", memberId).eq("status", "pending").maybeSingle(),
   ]);
   if (!profile || !summary) notFound();
   const entries = (ledger ?? []) as CommissionEntry[];
@@ -99,14 +101,21 @@ export default async function MemberCommissionPage({ params }: { params: Promise
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {pendingReq && (
+              <Alert tone="warning" title={`Ahli memohon pemindahan ${formatRM(pendingReq.amount_sen)}`} className="mb-4">
+                Ke {pendingReq.bank_name} <span className="font-mono">{pendingReq.bank_account_no}</span> ({pendingReq.bank_account_holder}).
+                {pendingReq.notes ? ` Catatan: “${pendingReq.notes}”` : ""} Permohonan ditanda dibayar secara automatik apabila baki menjadi sifar.
+              </Alert>
+            )}
             {memberId === userId ? (
               <Alert tone="info">Bayaran komisen kepada diri sendiri mesti direkodkan oleh Super Admin lain.</Alert>
+            ) : outstanding > 0 && !hasValidBank(profile) ? (
+              <Alert tone="warning">Ahli belum menetapkan akaun bank yang sah dalam profil. Bayaran tidak boleh direkodkan sehingga akaun bank dilengkapkan.</Alert>
             ) : outstanding > 0 ? (
               <PayoutForm memberId={memberId} adminId={userId} outstandingSen={outstanding} entries={unpaid} />
             ) : (
               <Alert tone="success">Tiada baki tertunggak.</Alert>
             )}
-            {!profile.bank_account_no && outstanding > 0 && <Alert tone="warning" className="mt-4">Ahli belum menetapkan akaun bank dalam profil.</Alert>}
           </CardContent>
         </Card>
       </div>
