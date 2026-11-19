@@ -114,3 +114,21 @@ export const CASHBOOK_SOURCES: Record<string, { label: string; tone: Tone }> = {
   korban: { label: "Korban", tone: "success" },
   komisen: { label: "Komisen", tone: "warning" },
 };
+
+export const INVOICE_STATUS: Record<string, { label: string; tone: Tone }> = {
+  draft: { label: "Draf", tone: "neutral" },
+  issued: { label: "Dikeluarkan", tone: "info" },
+  partially_paid: { label: "Dibayar Separa", tone: "warning" },
+  paid: { label: "Dibayar", tone: "success" },
+  cancelled: { label: "Dibatalkan", tone: "danger" },
+  overdue: { label: "Lewat Bayar", tone: "danger" },
+};
+
+export const PAYMENT_METHODS: Record<string, string> = {
+  bank_transfer: "Pindahan bank",
+  duitnow: "DuitNow",
+  cash: "Tunai",
+  card: "Kad",
+  cheque: "Cek",
+  other: "Lain-lain",
+};

@@ -8,6 +8,7 @@ test("member dashboard is usable on a phone", async ({ page }) => {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(1);
   await page.screenshot({ path: "test-results/mobile-dashboard.png", fullPage: true });
+  await expect(page.getByRole("navigation", { name: "Navigasi utama" }).getByRole("link", { name: "Bisnes" })).toBeVisible();
   await page.getByRole("navigation", { name: "Navigasi utama" }).getByRole("link", { name: "Komisen" }).click();
   await expect(page).toHaveURL(/\/ahli\/komisen/);
   await expect(page.getByText("RM 300.00").first()).toBeVisible(); // seeded full-cattle sale

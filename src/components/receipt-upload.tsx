@@ -28,7 +28,7 @@ function untouched(input: HTMLInputElement) {
 
 export function ReceiptUpload({
   userId, name = "receipt_path", bucket = "receipts", label = "Resit pembayaran", required = true, autofill,
-}: { userId: string; name?: string; bucket?: "receipts" | "payout-proofs"; label?: string; required?: boolean; autofill?: Autofill }) {
+}: { userId: string; name?: string; bucket?: "receipts" | "payout-proofs" | "business-proofs"; label?: string; required?: boolean; autofill?: Autofill }) {
   const [ocr, setOcr] = React.useState<{ state: "reading" | "done" | "none"; filled?: string[] } | null>(null);
   const rootRef = React.useRef<HTMLDivElement>(null);
 

@@ -7,12 +7,13 @@ import { Alert } from "@/components/ui/alert";
 import { requireAdmin } from "@/lib/auth";
 import { getSettings } from "@/lib/queries";
 import { saveSettingsAction } from "@/features/settings/actions";
+import { LogoUpload } from "@/features/business/logo-upload";
 import { senToDecimal } from "@/lib/format";
 
 export const metadata = { title: "Tetapan" };
 
 export default async function SettingsPage() {
-  await requireAdmin();
+  const { userId } = await requireAdmin();
   const s = await getSettings();
   const str = (k: string) => (typeof s[k] === "string" ? (s[k] as string) : "");
   const num = (k: string) => Number(s[k] ?? 0);
@@ -34,6 +35,19 @@ export default async function SettingsPage() {
           </CardContent>
         </Card>
         <div className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>Maklumat koperasi (Resit Rasmi)</CardTitle><CardDescription>Dipaparkan pada Resit Rasmi Koperasi untuk pembeli korban.</CardDescription></CardHeader>
+            <CardContent className="space-y-4">
+              <LogoUpload userId={userId} currentPath={str("coop_logo_path") || null} name="coop_logo_path" label="Logo koperasi" />
+              <FormField label="Nama koperasi" htmlFor="coop_name"><Input id="coop_name" name="coop_name" defaultValue={str("coop_name")} /></FormField>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label="No. pendaftaran koperasi" htmlFor="coop_reg_no"><Input id="coop_reg_no" name="coop_reg_no" defaultValue={str("coop_reg_no")} /></FormField>
+                <FormField label="Telefon" htmlFor="coop_phone"><Input id="coop_phone" name="coop_phone" defaultValue={str("coop_phone")} /></FormField>
+              </div>
+              <FormField label="E-mel" htmlFor="coop_email"><Input id="coop_email" name="coop_email" type="email" defaultValue={str("coop_email")} /></FormField>
+              <FormField label="Alamat" htmlFor="coop_address"><Textarea id="coop_address" name="coop_address" rows={2} defaultValue={str("coop_address")} /></FormField>
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader><CardTitle>Had modal syer</CardTitle><CardDescription>Ikut undang-undang kecil koperasi.</CardDescription></CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-3">

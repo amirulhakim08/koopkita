@@ -621,6 +621,23 @@ describe("admin notifications", () => {
   });
 });
 
+describe("official cooperative receipt for Qurban buyers", () => {
+  it("is available to the seller and admin for approved sales only", async () => {
+    const campaign = await createOpenCampaign(pool, admin, 1, 2060);
+    const seller = await createActiveMember(pool, admin, "resit-rasmi@kita.test");
+    const stranger = await createActiveMember(pool, admin, "resit-orang-lain@kita.test");
+    const sale = await createSale(pool, seller, campaign, 2);
+    await expect(asUser(pool, seller, `select public.coop_sale_receipt($1)`, [sale])).rejects.toThrow(/diluluskan/);
+    await payAndApprove(pool, admin, seller, sale);
+    const [{ r }] = await asUser<{ r: { sale_no: string; total_sen: number; participants: unknown[]; coop: { name: string } } }>(
+      pool, seller, `select public.coop_sale_receipt($1) as r`, [sale]);
+    expect([Number(r.total_sen), r.participants.length]).toEqual([170000, 2]);
+    expect(r.coop.name).toContain("Koperasi");
+    await expect(asUser(pool, admin, `select public.coop_sale_receipt($1)`, [sale])).resolves.toBeTruthy();
+    await expect(asUser(pool, stranger, `select public.coop_sale_receipt($1)`, [sale])).rejects.toThrow(/NOT_FOUND/);
+  });
+});
+
 describe("data isolation & immutability", () => {
   it("#16 members cannot access another member's private data", async () => {
     const campaign = await createOpenCampaign(pool, admin, 1, 2030);
