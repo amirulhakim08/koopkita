@@ -89,13 +89,13 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
 ## Change log
 - **2026-11-19: product/service catalogue + Super Admin sales report (migration 000014; local only, NOT yet applied to production).**
   - **Katalog** tab in Bisnes Saya. Each member lists their own products or services with a preferred price; the catalogue starts empty. Items are hidden, never deleted. Owner only (admin cannot see it).
-  - On invoices and receipts the item field searches the catalogue. Picking an item asks the member to **confirm the price** for that document; the catalogue price stays unchanged. "Lain-lain" lets the member type an item; ticking "Simpan ke katalog" adds it to the catalogue.
+  - On invoices and receipts, tapping the item field opens the catalogue. The member ticks one or more items and taps **Pilih**, then **confirms the prices** once; the items fill Perkara 1, 2 … (adding rows when needed). The catalogue price stays unchanged. "Lain-lain" lets the member type an item; ticking "Simpan ke katalog" adds it to the catalogue.
   - The quantity column is now called **Unit** (sizes go in the product name, e.g. "Ikan 1kg").
   - **Super Admin "Bisnes Ahli":**
     - Periods: this month, this year, all time, or custom dates.
     - Per business: total sales (invoices + direct sales), money received and current unpaid balance.
     - CSV export `bisnes-ahli`.
-  - Tests: unit 36/36, integration 67/67, e2e 20/20.
+  - Tests: unit 36/36, integration 67/67, e2e 21/21.
 - **2026-11-19: direct-sale receipts + customer search (migration 000013, applied; production fingerprint matches local).**
   - **Resit Jualan Langsung:** a receipt for a sale paid on the spot, with no invoice. Items, SST, payment method, optional OCR'd proof. Numbered `RCP-YYYY-NNNN` from the same sequence.
   - Stored as a paid "direct" sale that is never listed, shared or paid as an invoice. Reversing its receipt cancels the sale.

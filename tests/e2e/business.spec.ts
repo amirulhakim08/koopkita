@@ -63,9 +63,10 @@ test("Bisnes Saya: profile + logo → customer → invoice → share PDF → pub
   // item 2 comes from the catalogue: the price is confirmed (changed for this invoice only)
   await page.getByLabel("Perkara 2").fill("sarap");
   await page.getByRole("option", { name: /Sarapan \(set\)/ }).click();
+  await page.getByRole("button", { name: "Pilih (1)" }).click();
   const confirm = page.getByRole("group", { name: "Sahkan harga" });
-  await expect(confirm.getByLabel("Harga (RM)")).toHaveValue("15.00");
-  await confirm.getByLabel("Harga (RM)").fill("12.50");
+  await expect(confirm.getByLabel("Harga Sarapan (set)")).toHaveValue("15.00");
+  await confirm.getByLabel("Harga Sarapan (set)").fill("12.50");
   await confirm.getByRole("button", { name: "Sahkan harga" }).click();
   await expect(page.getByLabel("Perkara 2")).toHaveValue("Sarapan (set)");
   await expect(page.locator('input[name="items.1.unit_price"]')).toHaveValue("12.50");
@@ -221,4 +222,25 @@ test("official cooperative receipt PDF for an approved Qurban sale", async ({ pa
   const res = await page.request.get(page.url().replace(/\/ahli\/korban\/jualan\//, "/api/korban/resit/"));
   expect(res.status()).toBe(200);
   expect(res.headers()["content-type"]).toBe("application/pdf");
+});
+
+test("catalogue: tick several items, confirm their prices once, and they fill Perkara 1, 2 …", async ({ page }) => {
+  await login(page, { email: "ahli1@koopkita.test", password: "DevAhli#2026" });
+  await page.goto("/ahli/bisnes/resit/baharu");
+  await page.waitForLoadState("networkidle");
+  await page.getByLabel("Perkara 1").click(); // the catalogue opens without typing
+  await page.getByRole("option", { name: /Ikan kembung 1kg/ }).click();
+  await page.getByRole("option", { name: /Penghantaran/ }).click();
+  await expect(page.getByRole("listbox", { name: "Katalog" }).getByRole("option", { selected: true })).toHaveCount(2);
+  await page.getByRole("button", { name: "Pilih (2)" }).click();
+  const confirm = page.getByRole("group", { name: "Sahkan harga" });
+  await expect(confirm.getByLabel("Harga Ikan kembung 1kg")).toHaveValue("18.00");
+  await confirm.getByLabel("Harga Penghantaran")
+    .fill("10");
+  await confirm.getByRole("button", { name: "Sahkan harga" }).click();
+  await expect(page.getByLabel("Perkara 1")).toHaveValue("Ikan kembung 1kg");
+  await expect(page.getByLabel("Perkara 2")).toHaveValue("Penghantaran");
+  await expect(page.locator('input[name="items.1.unit_price"]')).toHaveValue("10");
+  await page.locator('input[name="items.0.quantity"]').fill("5");
+  await expect(page.getByText("RM 100.00").last()).toBeVisible(); // 5 x 18 + 10
 });
