@@ -126,6 +126,70 @@ describe("payments and receipts", () => {
   });
 });
 
+describe("direct-sale receipts (no invoice)", () => {
+  const direct = (uid: string, customer: string | null, it = items, k: string | null = key(), paidOn = "current_date") =>
+    asUser<{ id: string }>(pool, uid,
+      `select public.create_direct_receipt($1, ${paidOn}, 'cash', 'TUNAI-1', null, 'Terima kasih', $2, $3) as id`,
+      [customer, JSON.stringify(it), k]).then((r) => r[0].id);
+  const payment = async (id: string) => (await pool.query(`select * from public.business_payments where id = $1`, [id])).rows[0];
+
+  it("creates a paid sale with items and a receipt number, but no invoice number or invoice link", async () => {
+    const before = (await pool.query(`select count(*)::int n from public.business_invoices where not is_direct`)).rows[0].n;
+    const pid = await direct(owner, customerId);
+    const p = await payment(pid);
+    expect(p.receipt_no).toMatch(/^RCP-\d{4}-\d{4}$/);
+    expect(Number(p.amount_sen)).toBe(21000);
+    const inv = await invoice(p.invoice_id);
+    expect([inv.is_direct, inv.invoice_no, inv.status, Number(inv.paid_sen), inv.share_enabled]).toEqual([true, null, "paid", 21000, false]);
+    expect(inv.customer_snapshot.name).toBe("Encik Ali");
+    expect((await pool.query(`select count(*)::int n from public.business_invoices where not is_direct`)).rows[0].n).toBe(before);
+    // the receipt document carries the items; the invoice part cannot be shared or paid again
+    const [{ d }] = await asRole<{ d: { invoice: { is_direct: boolean; items: unknown[] }; payment: { balance_after_sen: number } } }>(
+      pool, "anon", {}, `select public.public_document($1) as d`, [p.share_token]);
+    expect([d.invoice.is_direct, d.invoice.items.length, Number(d.payment.balance_after_sen)]).toEqual([true, 2, 0]);
+    expect((await asRole<{ d: unknown }>(pool, "anon", {}, `select public.public_document($1) as d`, [inv.share_token]))[0].d).toBeNull();
+    await expect(asUser(pool, owner, `select public.set_document_share('invoice', $1, true, false)`, [inv.id])).rejects.toThrow(/NOT_FOUND/);
+    await expect(asUser(pool, owner, `select public.record_invoice_payment($1, 100, current_date, 'cash', null, null, null)`, [inv.id])).rejects.toThrow(/CONFLICT/);
+    await expect(pool.query(`update public.business_invoices set is_direct = false where id = $1`, [inv.id])).rejects.toThrow(/IMMUTABLE_RECORD/);
+    await expect(pool.query(`update public.business_invoice_items set unit_price_sen = 1 where invoice_id = $1`, [inv.id])).rejects.toThrow(/IMMUTABLE_RECORD/);
+  });
+
+  it("allows a walk-in customer, is idempotent and validates input", async () => {
+    const k = key();
+    const pid = await direct(owner, null, items, k);
+    expect(await direct(owner, null, items, k)).toBe(pid);
+    const inv = await invoice((await payment(pid)).invoice_id);
+    expect([inv.customer_id, inv.customer_snapshot.name]).toEqual([null, "Pelanggan Tunai"]);
+    await expect(direct(owner, null, [])).rejects.toThrow(/sekurang-kurangnya/);
+    await expect(direct(owner, null, [{ description: "Percuma", quantity: 1, unit_price_sen: 0, discount_sen: 0 }])).rejects.toThrow(/sifar/);
+    await expect(direct(owner, null, items, key(), "current_date + 1")).rejects.toThrow(/Tarikh/);
+    // another member's customer cannot be used
+    const third = await createActiveMember(pool, admin, "ketiga@kita.test");
+    const [{ id: otherBiz }] = await asUser<{ id: string }>(pool, third, `select public.save_my_business($1) as id`, [{ ...profile, name: "Bisnes Lain" }]);
+    const [{ id: otherCust }] = await asUser<{ id: string }>(pool, third,
+      `insert into public.business_customers (business_id, name) values ($1, 'Pelanggan Lain') returning id`, [otherBiz]);
+    await expect(direct(owner, otherCust)).rejects.toThrow(/Pelanggan tidak dijumpai/);
+    expect(await asUser(pool, third, `select * from public.business_payments`)).toHaveLength(0);
+  });
+
+  it("reversing a direct-sale receipt cancels the sale and it never reopens", async () => {
+    const pid = await direct(owner, customerId);
+    await asUser(pool, owner, `select public.reverse_invoice_payment($1, 'Barang dipulangkan')`, [pid]);
+    const inv = await invoice((await payment(pid)).invoice_id);
+    expect([inv.status, Number(inv.paid_sen)]).toEqual(["cancelled", 0]);
+    expect(inv.cancel_reason).toMatch(/dibalikkan/);
+    await expect(pool.query(`delete from public.business_payments where id = $1`, [pid])).rejects.toThrow(/IMMUTABLE_RECORD/);
+  });
+
+  it("admin totals count received money from direct sales but not as invoices", async () => {
+    const [row] = await asUser<{ invoice_count: string; received_sen: string; invoiced_sen: string }>(pool, admin,
+      `select * from public.admin_business_overview() where business_id = $1`, [businessId]);
+    const received = (await pool.query(`select coalesce(sum(amount_sen), 0)::bigint s from public.business_payments where business_id = $1 and reversed_at is null`, [businessId])).rows[0].s;
+    const invoices = (await pool.query(`select count(*)::int n from public.business_invoices where business_id = $1 and not is_direct and status not in ('draft', 'cancelled')`, [businessId])).rows[0].n;
+    expect([Number(row.received_sen), Number(row.invoice_count)]).toEqual([Number(received), invoices]);
+  });
+});
+
 describe("sharing, privacy and administration", () => {
   it("public links show one document to anyone with the token, and can be revoked or replaced", async () => {
     const id = await draft(owner, null);
@@ -159,11 +223,11 @@ describe("sharing, privacy and administration", () => {
     await expect(asUser(pool, other, `select public.my_business_document('invoice', $1)`, [anyInvoice])).rejects.toThrow(/NOT_FOUND/);
     await expect(asUser(pool, other, `insert into public.business_customers (business_id, name) values ($1, 'Pencuri')`, [businessId])).rejects.toThrow(/row-level security/);
     // admin: profile + aggregates, no customers / invoices / items / receipts
-    expect((await asUser(pool, admin, `select * from public.business_profiles`)).length).toBe(1);
+    expect((await asUser(pool, admin, `select * from public.business_profiles`)).length).toBe((await pool.query(`select count(*)::int n from public.business_profiles`)).rows[0].n);
     for (const t of ["business_customers", "business_invoices", "business_invoice_items", "business_payments"]) {
       expect(await asUser(pool, admin, `select * from public.${t}`), t).toHaveLength(0);
     }
-    const [row] = await asUser<{ invoice_count: string; received_sen: string }>(pool, admin, `select * from public.admin_business_overview()`);
+    const [row] = await asUser<{ invoice_count: string; received_sen: string }>(pool, admin, `select * from public.admin_business_overview() where business_id = $1`, [businessId]);
     expect(Number(row.invoice_count)).toBeGreaterThan(0);
     await expect(asUser(pool, owner, `select * from public.admin_business_overview()`)).rejects.toThrow(/FORBIDDEN/);
   });

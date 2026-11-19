@@ -28,7 +28,7 @@ const TABS = [
 ] as const;
 
 type InvoiceRow = { id: string; invoice_no: string | null; status: string; issue_date: string; due_date: string; total_sen: number; paid_sen: number; business_customers: { name: string } | null };
-type PaymentRow = { id: string; receipt_no: string; amount_sen: number; paid_on: string; method: string; reversed_at: string | null; invoice_id: string; business_invoices: { invoice_no: string; customer_snapshot: { name: string } } | null };
+type PaymentRow = { id: string; receipt_no: string; amount_sen: number; paid_on: string; method: string; reversed_at: string | null; invoice_id: string; business_invoices: { invoice_no: string | null; is_direct: boolean; customer_snapshot: { name: string } } | null };
 
 export default async function BusinessPage({ searchParams }: { searchParams: Promise<{ tab?: string; status?: string }> }) {
   const { userId } = await requireActiveMember();
@@ -41,8 +41,8 @@ export default async function BusinessPage({ searchParams }: { searchParams: Pro
 
   const [{ data: invoices }, { data: payments }, { data: customers }] = business
     ? await Promise.all([
-        supabase.from("business_invoices").select("id, invoice_no, status, issue_date, due_date, total_sen, paid_sen, business_customers(name)").eq("business_id", business.id).order("created_at", { ascending: false }).limit(500),
-        supabase.from("business_payments").select("id, receipt_no, amount_sen, paid_on, method, reversed_at, invoice_id, business_invoices(invoice_no, customer_snapshot)").eq("business_id", business.id).order("created_at", { ascending: false }).limit(500),
+        supabase.from("business_invoices").select("id, invoice_no, status, issue_date, due_date, total_sen, paid_sen, business_customers(name)").eq("business_id", business.id).eq("is_direct", false).order("created_at", { ascending: false }).limit(500),
+        supabase.from("business_payments").select("id, receipt_no, amount_sen, paid_on, method, reversed_at, invoice_id, business_invoices(invoice_no, is_direct, customer_snapshot)").eq("business_id", business.id).order("created_at", { ascending: false }).limit(500),
         supabase.from("business_customers").select("id, name, phone, email, address").eq("business_id", business.id).order("name"),
       ])
     : [{ data: [] }, { data: [] }, { data: [] }];
@@ -71,7 +71,12 @@ export default async function BusinessPage({ searchParams }: { searchParams: Pro
             {business.ssm_verified_at ? <Badge tone="success">✓ SSM disahkan</Badge> : business.ssm_no ? <Badge tone="warning">SSM belum disahkan</Badge> : null}
           </span>
         ) : "Urus invois dan resit untuk bisnes anda."}
-        actions={business && !business.suspended_at ? <Button asChild size="lg"><Link href="/ahli/bisnes/invois/baharu"><Plus /> Invois Baharu</Link></Button> : undefined}
+        actions={business && !business.suspended_at ? (
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+            <Button asChild size="lg" variant="outline"><Link href="/ahli/bisnes/resit/baharu"><Receipt /> Resit Baharu</Link></Button>
+            <Button asChild size="lg"><Link href="/ahli/bisnes/invois/baharu"><Plus /> Invois Baharu</Link></Button>
+          </div>
+        ) : undefined}
       />
 
       {business?.suspended_at && (
@@ -128,7 +133,7 @@ export default async function BusinessPage({ searchParams }: { searchParams: Pro
                   <DeleteCustomerButton id={c.id} />
                 </div>
               </details>
-            )) : <EmptyState icon={Users} title="Belum ada pelanggan" description="Tambah pelanggan supaya boleh dipilih semasa membuat invois." />}
+            )) : <EmptyState icon={Users} title="Belum ada pelanggan" description="Pelanggan juga boleh ditambah terus semasa membuat invois atau resit." />}
           </div>
         </div>
       )}
@@ -165,24 +170,34 @@ export default async function BusinessPage({ searchParams }: { searchParams: Pro
       )}
 
       {tab === "resit" && business && (
-        pays.length ? (
-          <Table>
-            <THead><TR><TH>No. Resit</TH><TH>Invois</TH><TH>Pelanggan</TH><TH>Tarikh</TH><TH>Kaedah</TH><TH className="text-right">Jumlah</TH><TH /></TR></THead>
-            <TBody>
-              {pays.map((p) => (
-                <TR key={p.id} className={p.reversed_at ? "opacity-60" : undefined}>
-                  <TD className="font-mono text-xs">{p.receipt_no}{p.reversed_at && <Badge tone="danger" className="ml-2">Dibalikkan</Badge>}</TD>
-                  <TD><Link href={`/ahli/bisnes/invois/${p.invoice_id}#resit`} className="text-primary hover:underline">{p.business_invoices?.invoice_no}</Link></TD>
-                  <TD>{p.business_invoices?.customer_snapshot?.name}</TD>
-                  <TD className="text-xs">{formatDate(p.paid_on)}</TD>
-                  <TD className="text-xs">{PAYMENT_METHODS[p.method] ?? p.method}</TD>
-                  <TD className="text-right font-semibold tabular-nums">{formatRM(p.amount_sen)}</TD>
-                  <TD><Link href={`/ahli/bisnes/invois/${p.invoice_id}#resit`} className="text-xs font-semibold text-primary hover:underline">Kongsi</Link></TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
-        ) : <EmptyState icon={Receipt} title="Belum ada resit" description="Resit dijana secara automatik apabila anda merekod bayaran pada invois." />
+        <div className="space-y-3">
+          {!business.suspended_at && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-white p-3 text-sm">
+              <span className="text-muted-foreground">Jualan dibayar terus? Jana resit tanpa invois.</span>
+              <Button asChild size="sm"><Link href="/ahli/bisnes/resit/baharu"><Plus /> Resit Jualan Langsung</Link></Button>
+            </div>
+          )}
+          {pays.length ? (
+            <Table>
+              <THead><TR><TH>No. Resit</TH><TH>Untuk</TH><TH>Pelanggan</TH><TH>Tarikh</TH><TH>Kaedah</TH><TH className="text-right">Jumlah</TH><TH /></TR></THead>
+              <TBody>
+                {pays.map((p) => (
+                  <TR key={p.id} className={p.reversed_at ? "opacity-60" : undefined}>
+                    <TD className="font-mono text-xs"><Link href={`/ahli/bisnes/resit/${p.id}`} className="text-primary hover:underline">{p.receipt_no}</Link>{p.reversed_at && <Badge tone="danger" className="ml-2">Dibalikkan</Badge>}</TD>
+                    <TD>{p.business_invoices?.is_direct
+                      ? <span className="text-xs text-muted-foreground">Jualan langsung</span>
+                      : <Link href={`/ahli/bisnes/invois/${p.invoice_id}`} className="text-primary hover:underline">{p.business_invoices?.invoice_no}</Link>}</TD>
+                    <TD>{p.business_invoices?.customer_snapshot?.name}</TD>
+                    <TD className="text-xs">{formatDate(p.paid_on)}</TD>
+                    <TD className="text-xs">{PAYMENT_METHODS[p.method] ?? p.method}</TD>
+                    <TD className="text-right font-semibold tabular-nums">{formatRM(p.amount_sen)}</TD>
+                    <TD><Link href={`/ahli/bisnes/resit/${p.id}`} className="text-xs font-semibold text-primary hover:underline">Kongsi</Link></TD>
+                  </TR>
+                ))}
+              </TBody>
+            </Table>
+          ) : <EmptyState icon={Receipt} title="Belum ada resit" description="Jana resit jualan langsung, atau rekod bayaran pada invois untuk menjana resit secara automatik." />}
+        </div>
       )}
 
       {tab !== "profil" && !business && (
