@@ -31,6 +31,7 @@ export default async function PublicDocumentPage({ params }: { params: Promise<{
   const p = doc.kind === "receipt" ? doc.payment : null;
   const logo = logoUrl(b.logo_path);
   const direct = Boolean(p && inv.is_direct); // receipt of a sale paid on the spot: items, no invoice
+  const paidBefore = p && !direct ? Math.max(0, inv.total_sen - p.balance_after_sen - p.amount_sen) : 0;
   const stamp = p ? (p.reversed ? ["DIBALIKKAN", "text-danger border-danger"] : ["DIBAYAR", "text-success border-success"])
     : inv.status === "cancelled" ? ["DIBATALKAN", "text-danger border-danger"] : inv.status === "paid" ? ["DIBAYAR", "text-success border-success"] : null;
 
@@ -80,20 +81,30 @@ export default async function PublicDocumentPage({ params }: { params: Promise<{
             </div>
           </div>
 
+          {p && !direct && <p className="mt-6 text-xs uppercase tracking-wide text-muted-foreground">Butiran invois {inv.invoice_no}</p>}
+          <table className={p && !direct ? "mt-1 w-full text-sm" : "mt-6 w-full text-sm"}>
+            <thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="py-2">Perkara</th><th className="py-2 text-right">Unit</th><th className="py-2 text-right">Jumlah</th></tr></thead>
+            <tbody>
+              {inv.items.map((it, i) => (
+                <tr key={i} className="border-b"><td className="py-2">{it.description}</td><td className="py-2 text-right">{Number(it.quantity)}</td><td className="py-2 text-right tabular-nums">{formatRM(it.line_total_sen)}</td></tr>
+              ))}
+            </tbody>
+          </table>
           {p && !direct ? (
-            <div className="mt-6 flex items-center justify-between rounded-xl bg-success-soft p-4 text-success">
-              <span className="font-semibold">Jumlah diterima</span><span className="text-2xl font-black tabular-nums">{formatRM(p.amount_sen)}</span>
-            </div>
+            <>
+              <dl className="ml-auto mt-3 w-full max-w-xs space-y-1 text-sm">
+                {inv.discount_sen > 0 && <div className="flex justify-between"><dt>Diskaun</dt><dd>-{formatRM(inv.discount_sen)}</dd></div>}
+                {inv.tax_sen > 0 && <div className="flex justify-between"><dt>SST ({inv.tax_rate_bp / 100}%)</dt><dd>{formatRM(inv.tax_sen)}</dd></div>}
+                <div className="flex justify-between border-t pt-1 font-semibold"><dt>Jumlah invois</dt><dd>{formatRM(inv.total_sen)}</dd></div>
+                {paidBefore > 0 && <div className="flex justify-between"><dt>Telah dibayar sebelum ini</dt><dd>-{formatRM(paidBefore)}</dd></div>}
+              </dl>
+              <div className="mt-4 flex items-center justify-between rounded-xl bg-success-soft p-4 text-success">
+                <span className="font-semibold">Jumlah diterima</span><span className="text-2xl font-black tabular-nums">{formatRM(p.amount_sen)}</span>
+              </div>
+              <p className="mt-2 text-right text-sm text-muted-foreground">Baki invois selepas bayaran ini: <strong className="text-foreground">{formatRM(Math.max(0, p.balance_after_sen))}</strong></p>
+            </>
           ) : (
             <>
-              <table className="mt-6 w-full text-sm">
-                <thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="py-2">Perkara</th><th className="py-2 text-right">Unit</th><th className="py-2 text-right">Jumlah</th></tr></thead>
-                <tbody>
-                  {inv.items.map((it, i) => (
-                    <tr key={i} className="border-b"><td className="py-2">{it.description}</td><td className="py-2 text-right">{Number(it.quantity)}</td><td className="py-2 text-right tabular-nums">{formatRM(it.line_total_sen)}</td></tr>
-                  ))}
-                </tbody>
-              </table>
               <dl className="ml-auto mt-3 w-full max-w-xs space-y-1 text-sm">
                 {inv.discount_sen > 0 && <div className="flex justify-between"><dt>Diskaun</dt><dd>-{formatRM(inv.discount_sen)}</dd></div>}
                 {inv.tax_sen > 0 && <div className="flex justify-between"><dt>SST ({inv.tax_rate_bp / 100}%)</dt><dd>{formatRM(inv.tax_sen)}</dd></div>}
