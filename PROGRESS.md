@@ -71,7 +71,7 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
 
 ## Phase 7 — Deployment ✅ (live, iterating)
 - ✅ Supabase project **mydevelopment** (`pikifjnwjpzoeqhorvpe`, ap-southeast-1 Singapore), used for KoopKITA only.
-- ✅ Migrations 000001–000013 applied (schema only, **no seed data**). After each one, the full schema fingerprint (functions, columns, constraints, policies, triggers, grants) matched the tested local stack.
+- ✅ Migrations 000001–000014 applied (schema only, **no seed data**). After each one, the full schema fingerprint (functions, columns, constraints, policies, triggers, grants) matched the tested local stack.
 - ✅ Private buckets `receipts`, `payout-proofs`, `business-proofs`; public `business-logos`; pg_cron job `koopkita-expire-reservations` (every 15 min).
 - ✅ Vercel project `koopkita` deployed from `main` at https://koopkita.vercel.app with the 3 public env vars.
 - ✅ First Super Admin provisioned (KITA-0001).
@@ -87,7 +87,7 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
   - Enter the official cooperative bank account and cooperative details (reg. no, address, logo) in Tetapan
 
 ## Change log
-- **2026-11-19: product/service catalogue + Super Admin sales report (migration 000014; local only, NOT yet applied to production).**
+- **2026-11-19: product/service catalogue + Super Admin sales report (migration 000014, applied; production fingerprint matches local).**
   - **Katalog** tab in Bisnes Saya. Each member lists their own products or services with a preferred price; the catalogue starts empty. Items are hidden, never deleted. Owner only (admin cannot see it).
   - On invoices and receipts, tapping the item field opens the catalogue. The member ticks one or more items and taps **Pilih**, then **confirms the prices** once; the items fill Perkara 1, 2 … (adding rows when needed). The catalogue price stays unchanged. "Lain-lain" lets the member type an item; ticking "Simpan ke katalog" adds it to the catalogue.
   - The quantity column is now called **Unit** (sizes go in the product name, e.g. "Ikan 1kg").
