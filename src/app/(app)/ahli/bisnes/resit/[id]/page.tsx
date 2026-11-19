@@ -70,7 +70,7 @@ export default async function ReceiptPage({ params, searchParams }: { params: Pr
       {dijana && <Alert tone="success" title="Resit dijana" className="mb-6">Kongsi resit kepada pelanggan menggunakan butang di bawah.</Alert>}
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+        <div className="min-w-0 space-y-6 lg:col-span-2">
           <Card>
             <CardHeader><CardTitle>Kongsi resit</CardTitle><CardDescription>Butang <strong>Kongsi PDF</strong> membuka menu kongsi telefon (WhatsApp, e-mel dan lain-lain) dengan PDF dilampirkan.</CardDescription></CardHeader>
             <CardContent className="space-y-3">
@@ -101,9 +101,9 @@ export default async function ReceiptPage({ params, searchParams }: { params: Pr
                     <TR key={i}>
                       <TD>{it.description}</TD>
                       <TD className="text-right">{Number(it.quantity)}</TD>
-                      <TD className="text-right tabular-nums">{formatRM(it.unit_price_sen)}</TD>
-                      <TD className="text-right tabular-nums">{Number(it.discount_sen) ? formatRM(it.discount_sen) : "-"}</TD>
-                      <TD className="text-right font-semibold tabular-nums">{formatRM(it.line_total_sen)}</TD>
+                      <TD className="whitespace-nowrap text-right tabular-nums">{formatRM(it.unit_price_sen)}</TD>
+                      <TD className="whitespace-nowrap text-right tabular-nums">{Number(it.discount_sen) ? formatRM(it.discount_sen) : "-"}</TD>
+                      <TD className="whitespace-nowrap text-right font-semibold tabular-nums">{formatRM(it.line_total_sen)}</TD>
                     </TR>
                   ))}
                 </TBody>
@@ -128,7 +128,7 @@ export default async function ReceiptPage({ params, searchParams }: { params: Pr
         </div>
 
         {!p.reversed_at && !suspended && (
-          <div>
+          <div className="min-w-0">
             <Card>
               <CardHeader>
                 <CardTitle>Balikkan resit</CardTitle>
