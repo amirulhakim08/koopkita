@@ -189,7 +189,7 @@ export default async function BusinessPage({ searchParams }: { searchParams: Pro
               <TBody>
                 {shownInvoices.map((i) => (
                   <TR key={i.id}>
-                    <TD><Link href={`/ahli/bisnes/invois/${i.id}`} className="font-medium text-primary hover:underline">{i.invoice_no ?? "Draf"}</Link></TD>
+                    <TD className="whitespace-nowrap"><Link href={`/ahli/bisnes/invois/${i.id}`} className="font-mono text-xs font-medium text-primary hover:underline">{i.invoice_no ?? "Draf"}</Link></TD>
                     <TD>{i.business_customers?.name}</TD>
                     <TD className="text-xs">{formatDate(i.issue_date)}</TD>
                     <TD className="text-xs">{formatDate(i.due_date)}</TD>
@@ -219,10 +219,10 @@ export default async function BusinessPage({ searchParams }: { searchParams: Pro
               <TBody>
                 {pays.map((p) => (
                   <TR key={p.id} className={p.reversed_at ? "opacity-60" : undefined}>
-                    <TD className="font-mono text-xs"><Link href={`/ahli/bisnes/resit/${p.id}`} className="text-primary hover:underline">{p.receipt_no}</Link>{p.reversed_at && <Badge tone="danger" className="ml-2">Dibalikkan</Badge>}</TD>
+                    <TD className="whitespace-nowrap font-mono text-xs"><Link href={`/ahli/bisnes/resit/${p.id}`} className="text-primary hover:underline">{p.receipt_no}</Link>{p.reversed_at && <Badge tone="danger" className="ml-2">Dibalikkan</Badge>}</TD>
                     <TD>{p.business_invoices?.is_direct
                       ? <span className="text-xs text-muted-foreground">Jualan langsung</span>
-                      : <Link href={`/ahli/bisnes/invois/${p.invoice_id}`} className="text-primary hover:underline">{p.business_invoices?.invoice_no}</Link>}</TD>
+                      : <Link href={`/ahli/bisnes/invois/${p.invoice_id}`} className="whitespace-nowrap font-mono text-xs text-primary hover:underline">{p.business_invoices?.invoice_no}</Link>}</TD>
                     <TD>{p.business_invoices?.customer_snapshot?.name}</TD>
                     <TD className="text-xs">{formatDate(p.paid_on)}</TD>
                     <TD className="text-xs">{PAYMENT_METHODS[p.method] ?? p.method}</TD>

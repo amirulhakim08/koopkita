@@ -66,7 +66,7 @@ describe("invoices", () => {
     // 4 x 45.00 + 10 x 3.50 - 5.00 = 210.00
     expect([Number(inv.subtotal_sen), Number(inv.discount_sen), Number(inv.total_sen), inv.status]).toEqual([21500, 500, 21000, "draft"]);
     const [{ no }] = await asUser<{ no: string }>(pool, owner, `select public.issue_invoice($1) as no`, [id]);
-    expect(no).toMatch(/^INV-\d{4}-0001$/);
+    expect(no).toMatch(/^INV-\d{6}001$/);
     inv = await invoice(id);
     expect(inv.status).toBe("issued");
     expect(inv.share_token).toMatch(/^[A-Za-z0-9_-]{32}$/);
@@ -86,6 +86,26 @@ describe("invoices", () => {
     await asUser(pool, owner, `select public.save_my_business($1)`, [profile]);
     await asUser(pool, owner, `select public.delete_invoice_draft($1)`, [id]);
     expect(await invoice(id)).toBeUndefined();
+  });
+
+  it("numbers documents by date (YYMMDD) with a daily sequence that restarts each day", async () => {
+    const dated = async (d: string) => {
+      const [{ id }] = await asUser<{ id: string }>(pool, owner,
+        `select public.save_invoice_draft(null, $1, $2::date, $2::date + 14, null, $3) as id`, [customerId, d, JSON.stringify(items)]);
+      return (await asUser<{ no: string }>(pool, owner, `select public.issue_invoice($1) as no`, [id]))[0].no;
+    };
+    expect(await dated("2026-01-25")).toBe("INV-260125001");
+    expect(await dated("2026-01-25")).toBe("INV-260125002");
+    expect(await dated("2026-01-26")).toBe("INV-260126001");
+    // the 1000th document of a day grows to 4 digits instead of wrapping
+    await pool.query(`update app_private.business_daily_counters set last_no = 999 where business_id = $1 and kind = 'INV' and doc_date = '2026-01-25'`, [businessId]);
+    expect(await dated("2026-01-25")).toBe("INV-2601251000");
+    // receipts use the payment date and their own sequence
+    const [{ id: inv }] = await asUser<{ id: string }>(pool, owner,
+      `select id from public.business_invoices where invoice_no = 'INV-260126001'`);
+    const [{ p }] = await asUser<{ p: string }>(pool, owner,
+      `select public.record_invoice_payment($1, 100, '2026-01-27', 'cash', null, null, null) as p`, [inv]);
+    expect((await pool.query(`select receipt_no from public.business_payments where id = $1`, [p])).rows[0].receipt_no).toBe("RCP-260127001");
   });
 
   it("allocates unique numbers under concurrency", async () => {
@@ -110,7 +130,7 @@ describe("payments and receipts", () => {
     const inv = await invoice(id);
     expect([inv.status, Number(inv.paid_sen)]).toEqual(["paid", 21000]);
     const receipts = (await pool.query(`select receipt_no from public.business_payments where invoice_id = $1 order by created_at`, [id])).rows;
-    expect(receipts.map((r) => r.receipt_no)).toEqual([expect.stringMatching(/^RCP-\d{4}-0001$/), expect.stringMatching(/^RCP-\d{4}-0002$/)]);
+    expect(receipts.map((r) => r.receipt_no)).toEqual([expect.stringMatching(/^RCP-\d{6}001$/), expect.stringMatching(/^RCP-\d{6}002$/)]);
   });
 
   it("reversing a receipt reopens the invoice; receipts are never deleted; cancellation needs reversals first", async () => {
@@ -137,7 +157,7 @@ describe("direct-sale receipts (no invoice)", () => {
     const before = (await pool.query(`select count(*)::int n from public.business_invoices where not is_direct`)).rows[0].n;
     const pid = await direct(owner, customerId);
     const p = await payment(pid);
-    expect(p.receipt_no).toMatch(/^RCP-\d{4}-\d{4}$/);
+    expect(p.receipt_no).toMatch(/^RCP-\d{9}$/);
     expect(Number(p.amount_sen)).toBe(21000);
     const inv = await invoice(p.invoice_id);
     expect([inv.is_direct, inv.invoice_no, inv.status, Number(inv.paid_sen), inv.share_enabled]).toEqual([true, null, "paid", 21000, false]);
