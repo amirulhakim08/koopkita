@@ -12,6 +12,7 @@ import { InvoiceEditor } from "@/features/business/invoice-editor";
 import { CancelInvoiceForm, DeleteDraftForm, RecordPaymentForm, ReversePaymentForm, ShareLinkControls } from "@/features/business/invoice-actions";
 import { displayStatus } from "@/features/business/totals";
 import type { CustomerRow } from "@/features/business/customer-forms";
+import type { CatalogOption } from "@/features/business/line-items";
 import { requireActiveMember } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatRM, todayKL } from "@/lib/format";
@@ -49,6 +50,9 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
     supabase.from("business_profiles").select("name, sst_enabled, sst_rate_bp, suspended_at").eq("id", inv.business_id).single(),
     supabase.from("business_customers").select("id, name, phone, email, address").eq("business_id", inv.business_id).order("name"),
   ]);
+  const { data: catalog } = inv.status === "draft"
+    ? await supabase.from("business_catalog_items").select("id, name, price_sen").eq("business_id", inv.business_id).eq("active", true).order("name")
+    : { data: [] };
   const its = (items ?? []) as Item[];
   const payments = (pays ?? []) as Pay[];
   const today = todayKL();
@@ -65,7 +69,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
         <Link href="/ahli/bisnes" className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"><ArrowLeft className="size-4" /> Bisnes Saya</Link>
         <PageHeader title="Draf invois" description={<StatusBadge map={INVOICE_STATUS} value="draft" />} actions={<DeleteDraftForm invoiceId={inv.id} />} />
         {suspended ? <Alert tone="danger">Modul Bisnes anda digantung.</Alert> : (
-          <InvoiceEditor customers={(customers ?? []) as CustomerRow[]} taxRateBp={business?.sst_enabled ? business.sst_rate_bp : 0}
+          <InvoiceEditor customers={(customers ?? []) as CustomerRow[]} catalog={(catalog ?? []) as CatalogOption[]} taxRateBp={business?.sst_enabled ? business.sst_rate_bp : 0}
             draft={{ id: inv.id, customer_id: inv.customer_id, issue_date: inv.issue_date, due_date: inv.due_date, notes: inv.notes, items: its }} />
         )}
       </>
@@ -98,7 +102,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
             <CardHeader><CardTitle>Butiran</CardTitle><CardDescription>Tarikh {formatDate(inv.issue_date)} · Tarikh akhir {formatDate(inv.due_date)}</CardDescription></CardHeader>
             <CardContent className="space-y-3">
               <Table>
-                <THead><TR><TH>Perkara</TH><TH className="text-right">Kuantiti</TH><TH className="text-right">Harga</TH><TH className="text-right">Diskaun</TH><TH className="text-right">Jumlah</TH></TR></THead>
+                <THead><TR><TH>Perkara</TH><TH className="text-right">Unit</TH><TH className="text-right">Harga</TH><TH className="text-right">Diskaun</TH><TH className="text-right">Jumlah</TH></TR></THead>
                 <TBody>
                   {its.map((it, i) => (
                     <TR key={i}>

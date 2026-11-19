@@ -87,7 +87,7 @@ export default async function PublicDocumentPage({ params }: { params: Promise<{
           ) : (
             <>
               <table className="mt-6 w-full text-sm">
-                <thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="py-2">Perkara</th><th className="py-2 text-right">Kuantiti</th><th className="py-2 text-right">Jumlah</th></tr></thead>
+                <thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="py-2">Perkara</th><th className="py-2 text-right">Unit</th><th className="py-2 text-right">Jumlah</th></tr></thead>
                 <tbody>
                   {inv.items.map((it, i) => (
                     <tr key={i} className="border-b"><td className="py-2">{it.description}</td><td className="py-2 text-right">{Number(it.quantity)}</td><td className="py-2 text-right tabular-nums">{formatRM(it.line_total_sen)}</td></tr>

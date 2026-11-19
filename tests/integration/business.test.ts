@@ -240,3 +240,49 @@ describe("sharing, privacy and administration", () => {
     await expect(draft(owner, null)).resolves.toBeTruthy();
   });
 });
+
+describe("catalogue and Super Admin sales report", () => {
+  it("each member keeps a private catalogue; items are hidden, never deleted; names are unique", async () => {
+    const [{ id }] = await asUser<{ id: string }>(pool, owner,
+      `insert into public.business_catalog_items (business_id, name, price_sen) values ($1, 'Ikan 1kg', 2000) returning id`, [businessId]);
+    await expect(asUser(pool, owner, `insert into public.business_catalog_items (business_id, name, price_sen) values ($1, ' ikan 1KG ', 2500)`, [businessId]))
+      .rejects.toThrow(/duplicate key/);
+    await asUser(pool, owner, `update public.business_catalog_items set price_sen = 2200, active = false where id = $1`, [id]);
+    expect((await pool.query(`select price_sen, active from public.business_catalog_items where id = $1`, [id])).rows[0]).toEqual({ price_sen: "2200", active: false });
+    await expect(asUser(pool, owner, `delete from public.business_catalog_items where id = $1`, [id])).rejects.toThrow(/permission denied/);
+    await expect(pool.query(`delete from public.business_catalog_items where id = $1`, [id])).rejects.toThrow(/IMMUTABLE_RECORD/);
+    expect(await asUser(pool, other, `select * from public.business_catalog_items`)).toHaveLength(0);
+    expect(await asUser(pool, admin, `select * from public.business_catalog_items`)).toHaveLength(0);
+    await expect(asUser(pool, other, `insert into public.business_catalog_items (business_id, name, price_sen) values ($1, 'Curi', 1)`, [businessId]))
+      .rejects.toThrow(/row-level security/);
+    await expect(asRole(pool, "anon", {}, `select * from public.business_catalog_items`)).rejects.toThrow(/permission denied/);
+  });
+
+  it("reports sales per business for a date range: invoices + direct sales, money received, open balance", async () => {
+    // a fresh business with known figures
+    const seller = await createActiveMember(pool, admin, "laporan@kita.test");
+    const [{ id: biz }] = await asUser<{ id: string }>(pool, seller, `select public.save_my_business($1) as id`, [{ ...profile, name: "Bisnes Laporan" }]);
+    const [{ id: cust }] = await asUser<{ id: string }>(pool, seller,
+      `insert into public.business_customers (business_id, name) values ($1, 'Pelanggan') returning id`, [biz]);
+    const line = (sen: number) => JSON.stringify([{ description: "Barang", quantity: 1, unit_price_sen: sen, discount_sen: 0 }]);
+    const [{ id: inv }] = await asUser<{ id: string }>(pool, seller,
+      `select public.save_invoice_draft(null, $1, current_date, current_date + 7, null, $2) as id`, [cust, line(10000)]);
+    await asUser(pool, seller, `select public.issue_invoice($1)`, [inv]);
+    await asUser(pool, seller, `select public.record_invoice_payment($1, 4000, current_date, 'cash', null, null, null)`, [inv]);
+    await asUser(pool, seller, `select public.create_direct_receipt(null, current_date, 'cash', null, null, null, $1, null)`, [line(2500)]);
+    const [{ id: old }] = await asUser<{ id: string }>(pool, seller,
+      `select public.create_direct_receipt(null, current_date - 40, 'cash', null, null, null, $1, null) as id`, [line(700)]);
+    expect(old).toBeTruthy();
+    const report = (from: string | null, to: string | null) =>
+      asUser<Record<string, string>>(pool, admin, `select * from public.admin_business_report($1, $2) where business_id = $3`, [from, to, biz]).then((r) => r[0]);
+
+    const all = await report(null, null);
+    expect([all.invoice_count, all.invoiced_sen, all.direct_count, all.direct_sales_sen, all.total_sales_sen, all.received_sen, all.outstanding_sen].map(Number))
+      .toEqual([1, 10000, 2, 3200, 13200, 7200, 6000]);
+    const [{ d: since }] = (await pool.query(`select (current_date - 7)::text d`)).rows;
+    const recent = await report(since, null);
+    expect([recent.direct_sales_sen, recent.total_sales_sen, recent.received_sen, recent.outstanding_sen].map(Number)).toEqual([2500, 12500, 6500, 6000]);
+    await expect(asUser(pool, admin, `select * from public.admin_business_report(current_date, current_date - 1)`)).rejects.toThrow(/VALIDATION/);
+    await expect(asUser(pool, seller, `select * from public.admin_business_report(null, null)`)).rejects.toThrow(/FORBIDDEN/);
+  });
+});

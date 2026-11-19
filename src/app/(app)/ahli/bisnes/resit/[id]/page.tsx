@@ -85,7 +85,7 @@ export default async function ReceiptPage({ params, searchParams }: { params: Pr
               {inv.is_direct ? (
                 <>
                   <Table>
-                    <THead><TR><TH>Perkara</TH><TH className="text-right">Kuantiti</TH><TH className="text-right">Harga</TH><TH className="text-right">Diskaun</TH><TH className="text-right">Jumlah</TH></TR></THead>
+                    <THead><TR><TH>Perkara</TH><TH className="text-right">Unit</TH><TH className="text-right">Harga</TH><TH className="text-right">Diskaun</TH><TH className="text-right">Jumlah</TH></TR></THead>
                     <TBody>
                       {its.map((it, i) => (
                         <TR key={i}>

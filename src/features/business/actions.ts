@@ -91,10 +91,43 @@ export async function deleteCustomerAction(_prev: ActionState, formData: FormDat
   return { ok: true, message: "Pelanggan dipadam." };
 }
 
+// ---------------------------------------------------------------- catalogue
+const catalogSchema = z.object({
+  id: z.preprocess(emptyToUndef, uuid.optional()),
+  name: z.preprocess(trim, z.string().min(1, "Nama produk / servis diperlukan").max(300)),
+  price: z.preprocess((v) => (typeof v === "string" ? parseRMToSen(v || "") : v), z.number({ message: "Harga tidak sah" }).int().min(0, "Harga tidak sah")),
+});
+
+export async function saveCatalogItemAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const businessId = await myBusinessId();
+  if (!businessId) return fail("Sila lengkapkan Profil Bisnes dahulu.");
+  const parsed = catalogSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fail("Sila semak item katalog.", fieldErrors(parsed.error));
+  const { id, name, price } = parsed.data;
+  const supabase = await createClient();
+  const { error } = id
+    ? await supabase.from("business_catalog_items").update({ name, price_sen: price }).eq("id", id)
+    : await supabase.from("business_catalog_items").insert({ business_id: businessId, name, price_sen: price });
+  if (error) return fail(error.code === "23505" ? "Nama ini sudah ada dalam katalog." : "Item katalog tidak dapat disimpan.");
+  revalidatePath("/ahli/bisnes", "layout");
+  return { ok: true, message: id ? "Item katalog dikemas kini." : "Item ditambah ke katalog." };
+}
+
+export async function setCatalogActiveAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const id = uuid.safeParse(formData.get("id"));
+  if (!id.success) return fail("Permintaan tidak sah.");
+  const active = formData.get("active") === "true";
+  const supabase = await createClient();
+  const { error } = await supabase.from("business_catalog_items").update({ active }).eq("id", id.data);
+  if (error) return fail("Item katalog tidak dapat dikemas kini.");
+  revalidatePath("/ahli/bisnes", "layout");
+  return { ok: true, message: active ? "Item dipaparkan semula." : "Item disembunyikan daripada pilihan." };
+}
+
 // ---------------------------------------------------------------- invoices
 const itemSchema = z.object({
   description: z.preprocess(trim, z.string().min(1, "Perkara diperlukan").max(300)),
-  quantity: z.coerce.number({ message: "Kuantiti tidak sah" }).positive("Kuantiti mesti lebih daripada 0").max(1_000_000),
+  quantity: z.coerce.number({ message: "Unit tidak sah" }).positive("Unit mesti lebih daripada 0").max(1_000_000),
   unit_price: z.preprocess((v) => (typeof v === "string" ? parseRMToSen(v || "0") : v), z.number({ message: "Harga tidak sah" }).int().min(0)),
   discount: z.preprocess((v) => (typeof v === "string" ? parseRMToSen(v || "0") : v), z.number({ message: "Diskaun tidak sah" }).int().min(0)),
 });
@@ -116,7 +149,28 @@ function postedItems(formData: FormData) {
   return Array.from({ length: Math.min(Math.max(count, 0), 100) }, (_, i) => ({
     description: formData.get(`items.${i}.description`), quantity: formData.get(`items.${i}.quantity`),
     unit_price: formData.get(`items.${i}.unit_price`), discount: formData.get(`items.${i}.discount`),
+    save_catalog: formData.get(`items.${i}.save_catalog`) === "on",
   })).filter((it) => String(it.description ?? "").trim() !== "" || String(it.unit_price ?? "").trim() !== "");
+}
+
+/** Lines the member ticked "Simpan ke katalog" for: added to the catalogue unless the name is already there. */
+async function saveLinesToCatalog(formData: FormData) {
+  const wanted = postedItems(formData).filter((it) => it.save_catalog);
+  if (!wanted.length) return;
+  const businessId = await myBusinessId();
+  if (!businessId) return;
+  const supabase = await createClient();
+  const { data: existing } = await supabase.from("business_catalog_items").select("name").eq("business_id", businessId);
+  const taken = new Set((existing ?? []).map((c) => c.name.trim().toLowerCase()));
+  const rows: { business_id: string; name: string; price_sen: number }[] = [];
+  for (const it of wanted) {
+    const name = String(it.description ?? "").trim();
+    const price = parseRMToSen(String(it.unit_price ?? "") || "0");
+    if (!name || name.length > 300 || price === null || price < 0 || taken.has(name.toLowerCase())) continue;
+    taken.add(name.toLowerCase());
+    rows.push({ business_id: businessId, name, price_sen: price });
+  }
+  if (rows.length) await supabase.from("business_catalog_items").insert(rows);
 }
 
 function itemsForRpc(items: ParsedItem[]): { error?: string; rows: { description: string; quantity: number; unit_price_sen: number; discount_sen: number }[] } {
@@ -181,6 +235,7 @@ export async function saveInvoiceAction(_prev: ActionState, formData: FormData):
     p_items: items.rows,
   }, { success: "Draf disimpan.", revalidate: ["/ahli/bisnes"] });
   if (!saved?.ok) return saved;
+  await saveLinesToCatalog(formData);
   if (d.intent === "issue") {
     const issued = await callRpc<string>("issue_invoice", { p_id: saved.data }, { success: "Invois dikeluarkan.", revalidate: ["/ahli/bisnes"] });
     if (!issued?.ok) return issued;
@@ -213,6 +268,7 @@ export async function createDirectReceiptAction(_prev: ActionState, formData: Fo
     p_proof_path: d.proof_path ?? null, p_notes: d.notes ?? null, p_items: items.rows, p_idempotency_key: d.idempotency_key,
   }, { success: "Resit dijana.", revalidate: ["/ahli/bisnes"] });
   if (!res?.ok) return res;
+  await saveLinesToCatalog(formData);
   redirect(`/ahli/bisnes/resit/${res.data}?dijana=1`);
 }
 

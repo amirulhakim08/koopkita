@@ -5,7 +5,7 @@ import { Input, Textarea } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { saveInvoiceAction } from "./actions";
 import { CustomerPicker } from "./customer-picker";
-import { LineItemsCard, TotalsRows, useLineItems, type SavedLine } from "./line-items";
+import { LineItemsCard, TotalsRows, useLineItems, type CatalogOption, type SavedLine } from "./line-items";
 import type { CustomerLite } from "./customer-match";
 
 export type DraftInput = {
@@ -13,7 +13,7 @@ export type DraftInput = {
   items?: SavedLine[];
 };
 
-export function InvoiceEditor({ customers, draft, taxRateBp }: { customers: CustomerLite[]; draft: DraftInput; taxRateBp: number }) {
+export function InvoiceEditor({ customers, catalog, draft, taxRateBp }: { customers: CustomerLite[]; catalog: CatalogOption[]; draft: DraftInput; taxRateBp: number }) {
   const lineItems = useLineItems(draft.items, taxRateBp);
 
   return (
@@ -29,7 +29,7 @@ export function InvoiceEditor({ customers, draft, taxRateBp }: { customers: Cust
           </CardContent>
         </Card>
 
-        <LineItemsCard state={lineItems} />
+        <LineItemsCard state={lineItems} catalog={catalog} />
 
         <FormField label="Catatan (pilihan)" htmlFor="notes"><Textarea id="notes" name="notes" rows={2} defaultValue={draft.notes ?? ""} /></FormField>
       </div>
