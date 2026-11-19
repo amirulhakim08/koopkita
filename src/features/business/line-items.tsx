@@ -107,7 +107,11 @@ export function LineItemsCard({ state, catalog = [] }: { state: ReturnType<typeo
                     {showList && (
                       <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border bg-white shadow-lg"
                         onMouseDown={(e) => e.preventDefault()}>
-                        <p className="border-b px-3 py-2 text-xs text-muted-foreground">Tanda satu atau lebih item, kemudian tekan <strong>Pilih</strong>.</p>
+                        <button type="button" onClick={close}
+                          className="flex w-full items-center gap-2 border-b px-4 py-3 text-left text-sm font-semibold text-primary hover:bg-muted">
+                          <PencilLine className="size-4" /> Lain-lain: taip sendiri
+                        </button>
+                        <p className="border-b bg-muted/30 px-3 py-2 text-xs text-muted-foreground">Atau pilih daripada katalog: tanda satu atau lebih item, kemudian tekan <strong>Pilih</strong>.</p>
                         <ul role="listbox" aria-label="Katalog" aria-multiselectable className="max-h-64 overflow-auto p-1">
                           {options.map((c) => {
                             const on = selected.includes(c.id);
@@ -128,10 +132,7 @@ export function LineItemsCard({ state, catalog = [] }: { state: ReturnType<typeo
                           })}
                           {!options.length && <li className="px-3 py-2 text-xs text-muted-foreground">Tiada dalam katalog.</li>}
                         </ul>
-                        <div className="flex flex-wrap items-center justify-between gap-2 border-t bg-muted/30 p-2">
-                          <Button type="button" size="sm" variant="ghost" className="text-primary" onClick={close}>
-                            <PencilLine /> Lain-lain: taip sendiri
-                          </Button>
+                        <div className="flex justify-end border-t bg-muted/30 p-2">
                           <Button type="button" size="sm" disabled={!selected.length} onClick={() => choose(it.key)}>
                             <BookOpen /> Pilih{selected.length ? ` (${selected.length})` : ""}
                           </Button>
