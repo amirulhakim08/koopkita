@@ -92,18 +92,12 @@ test("Bisnes Saya: profile + logo → customer → invoice → share PDF → pub
   expect(file.name).toBe(`Invois-${invoiceNo}.pdf`);
   expect(file.type).toBe("application/pdf");
   expect(file.size).toBeGreaterThan(2000);
-  expect(file.text).not.toContain("/d/"); // the link is only added when asked for
-
-  // 4b. "WhatsApp" also hands the PDF to the share sheet; "Sertakan pautan" adds the customer link
-  await page.getByLabel("Sertakan pautan dalam mesej").first().check();
-  await page.getByRole("button", { name: "WhatsApp" }).first().click();
-  await expect.poll(async () => (await shared()).length).toBe(2);
-  const wa = (await shared())[1];
-  expect([wa.name, wa.type]).toEqual([`Invois-${invoiceNo}.pdf`, "application/pdf"]);
-  expect(wa.text).toContain("/d/");
+  expect(file.text).toContain("/d/");
 
   // 5. the customer opens the public link without signing in
-  const publicUrl = wa.text.match(/https?:\/\/[^\s]+\/d\/[A-Za-z0-9_-]{32}/)![0];
+  const waHref = await page.getByRole("link", { name: "WhatsApp" }).first().getAttribute("href");
+  expect(waHref).toContain("wa.me/60135556666");
+  const publicUrl = decodeURIComponent(waHref!).match(/https?:\/\/[^\s]+\/d\/[A-Za-z0-9_-]{32}/)![0];
   const anon = await browser.newContext();
   const cust = await anon.newPage();
   await cust.goto(publicUrl);
@@ -158,12 +152,9 @@ test("Bisnes Saya: profile + logo → customer → invoice → share PDF → pub
   await page.getByRole("button", { name: "Kongsi PDF" }).click();
   await expect.poll(async () => (await shared()).length).toBe(1);
   expect((await shared())[0].name).toBe(`Resit-${directNo}.pdf`);
-  await page.getByLabel("Sertakan pautan dalam mesej").check();
-  await page.getByRole("button", { name: "WhatsApp" }).click();
-  await expect.poll(async () => (await shared()).length).toBe(2);
-  const directWa = (await shared())[1];
-  expect(directWa.name).toBe(`Resit-${directNo}.pdf`);
-  const directUrl = directWa.text.match(/https?:\/\/[^\s]+\/d\/[A-Za-z0-9_-]{32}/)![0];
+  const directWa = await page.getByRole("link", { name: "WhatsApp" }).first().getAttribute("href");
+  expect(directWa).toContain("wa.me/60177778888");
+  const directUrl = decodeURIComponent(directWa!).match(/https?:\/\/[^\s]+\/d\/[A-Za-z0-9_-]{32}/)![0];
   // not listed as an invoice; the new customer is saved and can be found next time
   await page.goto("/ahli/bisnes?tab=invois");
   await expect(page.getByRole("row")).toHaveCount(2); // header + the one invoice
@@ -228,12 +219,6 @@ test("without a file share sheet (desktop browsers), Kongsi PDF offers download 
   const download = page.waitForEvent("download");
   await dialog.getByRole("button", { name: "Muat turun PDF" }).click();
   expect((await download).suggestedFilename()).toMatch(/^Invois-INV-\d{6}001\.pdf$/);
-  // WhatsApp without a file share sheet: the PDF is downloaded and WhatsApp opens with the message for the customer
-  const download2 = page.waitForEvent("download");
-  const popup = page.waitForEvent("popup");
-  await page.getByRole("button", { name: "WhatsApp" }).first().click();
-  expect((await download2).suggestedFilename()).toMatch(/^Invois-INV-\d{6}001\.pdf$/);
-  expect((await popup).url()).toContain("wa.me/60112233445");
 });
 
 test("official cooperative receipt PDF for an approved Qurban sale", async ({ page }) => {
