@@ -232,6 +232,11 @@ test("catalogue: tick several items, confirm their prices once, and they fill Pe
   await page.getByRole("option", { name: /Ikan kembung 1kg/ }).click();
   await page.getByRole("option", { name: /Penghantaran/ }).click();
   await expect(page.getByRole("listbox", { name: "Katalog" }).getByRole("option", { selected: true })).toHaveCount(2);
+  // narrowing the list keeps earlier ticks, and the footer lists every ticked item
+  await page.getByLabel("Perkara 1").fill("baja");
+  await expect(page.getByRole("listbox", { name: "Katalog" }).getByRole("option")).toHaveCount(1);
+  await expect(page.getByTestId("catalog-chosen")).toHaveText("Ditanda: Ikan kembung 1kg, Penghantaran");
+  await page.getByLabel("Perkara 1").fill("");
   await page.getByRole("button", { name: "Pilih (2)" }).click();
   const confirm = page.getByRole("group", { name: "Sahkan harga" });
   await expect(confirm.getByLabel("Harga Ikan kembung 1kg")).toHaveValue("18.00");

@@ -132,8 +132,11 @@ export function LineItemsCard({ state, catalog = [] }: { state: ReturnType<typeo
                           })}
                           {!options.length && <li className="px-3 py-2 text-xs text-muted-foreground">Tiada dalam katalog.</li>}
                         </ul>
-                        <div className="flex justify-end border-t bg-muted/30 p-2">
-                          <Button type="button" size="sm" disabled={!selected.length} onClick={() => choose(it.key)}>
+                        <div className="flex items-center justify-between gap-2 border-t bg-muted/30 p-2">
+                          <p className="min-w-0 flex-1 px-1 text-xs text-muted-foreground" aria-live="polite" data-testid="catalog-chosen">
+                            {selected.length ? <>Ditanda: <strong className="text-foreground">{selected.map((id) => catalog.find((c) => c.id === id)?.name).filter(Boolean).join(", ")}</strong></> : "Belum ada item ditanda."}
+                          </p>
+                          <Button type="button" size="sm" className="shrink-0" disabled={!selected.length} onClick={() => choose(it.key)}>
                             <BookOpen /> Pilih{selected.length ? ` (${selected.length})` : ""}
                           </Button>
                         </div>
