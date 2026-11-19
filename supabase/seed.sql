@@ -101,6 +101,8 @@ begin
   v_biz := public.save_my_business('{"name":"Kedai Contoh Agro Enterprise (DEV)","ssm_no":"202403123456","phone":"0123456789","email":"kedai@contoh.test","address":"No 1, Jalan Contoh, Alor Setar","bank_name":"Maybank","bank_account_no":"512345678901","bank_account_holder":"Kedai Contoh Agro Enterprise"}');
   insert into public.business_customers (business_id, name, phone, address) values (v_biz, 'Encik Ali Contoh', '0112233445', 'Jitra, Kedah') returning id into v_cust;
   insert into public.business_customers (business_id, name, phone) values (v_biz, 'Kafe Contoh Sdn Bhd', '0198887777');
+  insert into public.business_catalog_items (business_id, name, price_sen) values
+    (v_biz, 'Baja organik 25kg', 4500), (v_biz, 'Benih cili (pek)', 350), (v_biz, 'Penghantaran', 1500), (v_biz, 'Ikan kembung 1kg', 1800);
   v_inv := public.save_invoice_draft(null, v_cust, current_date - 3, current_date + 11, 'Terima kasih atas sokongan anda.',
     '[{"description":"Baja organik 25kg","quantity":4,"unit_price_sen":4500,"discount_sen":0},{"description":"Benih cili (pek)","quantity":10,"unit_price_sen":350,"discount_sen":0},{"description":"Penghantaran","quantity":1,"unit_price_sen":1500,"discount_sen":0}]');
   perform public.issue_invoice(v_inv);

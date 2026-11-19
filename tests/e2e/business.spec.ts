@@ -40,6 +40,14 @@ test("Bisnes Saya: profile + logo → customer → invoice → share PDF → pub
   await page.getByRole("button", { name: "Tambah pelanggan" }).click();
   await expect(page.getByText("Pelanggan ditambah.")).toBeVisible();
 
+  // 2b. catalogue: the member lists their own product with a preferred price
+  await page.goto("/ahli/bisnes?tab=katalog");
+  await expect(page.getByText("Katalog masih kosong")).toBeVisible();
+  await page.getByLabel("Nama produk / servis").fill("Sarapan (set)");
+  await page.getByLabel("Harga (RM)").fill("15");
+  await page.getByRole("button", { name: "Tambah ke katalog" }).click();
+  await expect(page.getByText("Item ditambah ke katalog.")).toBeVisible();
+
   // 3. invoice
   await page.goto("/ahli/bisnes/invois/baharu");
   // the customer box finds an existing customer by phone number
@@ -50,9 +58,18 @@ test("Bisnes Saya: profile + logo → customer → invoice → share PDF → pub
   await page.locator('input[name="items.0.quantity"]').fill("2");
   await page.locator('input[name="items.0.unit_price"]').fill("180");
   await page.getByRole("button", { name: "Tambah item" }).click();
-  await page.getByLabel("Perkara 2").fill("Sarapan");
+  // item 1 is typed in and saved to the catalogue for next time
+  await page.getByText("Simpan ke katalog untuk kegunaan akan datang").click();
+  // item 2 comes from the catalogue: the price is confirmed (changed for this invoice only)
+  await page.getByLabel("Perkara 2").fill("sarap");
+  await page.getByRole("option", { name: /Sarapan \(set\)/ }).click();
+  const confirm = page.getByRole("group", { name: "Sahkan harga" });
+  await expect(confirm.getByLabel("Harga (RM)")).toHaveValue("15.00");
+  await confirm.getByLabel("Harga (RM)").fill("12.50");
+  await confirm.getByRole("button", { name: "Sahkan harga" }).click();
+  await expect(page.getByLabel("Perkara 2")).toHaveValue("Sarapan (set)");
+  await expect(page.locator('input[name="items.1.unit_price"]')).toHaveValue("12.50");
   await page.locator('input[name="items.1.quantity"]').fill("4");
-  await page.locator('input[name="items.1.unit_price"]').fill("12.50");
   await page.locator('input[name="items.1.discount"]').fill("10");
   await expect(page.getByText("RM 400.00").last()).toBeVisible(); // 360 + 50 - 10
   await page.getByRole("button", { name: "Keluarkan" }).click();
@@ -60,6 +77,12 @@ test("Bisnes Saya: profile + logo → customer → invoice → share PDF → pub
   const invoiceNo = (await page.getByRole("heading", { level: 1 }).textContent())!.trim();
   expect(invoiceNo).toMatch(/^INV-\d{4}-0001$/);
   const invoiceUrl = page.url();
+  // the typed-in item is now in the catalogue; the catalogue price of the picked item is unchanged
+  await page.goto("/ahli/bisnes?tab=katalog");
+  await expect(page.getByText("Sewa homestay 2 malam")).toBeVisible();
+  await expect(page.getByText("RM 180.00")).toBeVisible();
+  await expect(page.getByText("RM 15.00")).toBeVisible();
+  await page.goto(invoiceUrl);
 
   // 4. "Kongsi PDF" hands a real PDF file to the device share sheet
   await page.getByRole("button", { name: "Kongsi PDF" }).first().click();
@@ -162,6 +185,13 @@ test("Bisnes Saya: profile + logo → customer → invoice → share PDF → pub
   await page.goto("/admin/bisnes");
   const row = page.getByRole("row").filter({ hasText: "Homestay Ujian Siti" });
   await expect(row.getByText("RM 400.00").first()).toBeVisible();
+  await expect(page.getByText("Jumlah jualan").first()).toBeVisible();
+  await expect(row.getByText("RM 424.00").first()).toBeVisible(); // invoice 400 + direct sale 24
+  await page.getByRole("link", { name: "Semua" }).click();
+  await expect(row.getByText("RM 424.00").first()).toBeVisible();
+  const csv = await page.request.get("/api/eksport/bisnes-ahli");
+  expect(csv.status()).toBe(200);
+  expect(await csv.text()).toContain("Homestay Ujian Siti");
   await row.getByRole("button", { name: "Sahkan SSM" }).click();
   await expect(page.getByText("SSM disahkan.")).toBeVisible();
   await expect(page.getByText("Puan Aminah Ujian")).toHaveCount(0); // no customer details for admin

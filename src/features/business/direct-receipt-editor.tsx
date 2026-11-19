@@ -8,12 +8,12 @@ import { PAYMENT_METHODS } from "@/lib/labels";
 import { todayKL } from "@/lib/format";
 import { createDirectReceiptAction } from "./actions";
 import { CustomerPicker } from "./customer-picker";
-import { LineItemsCard, TotalsRows, useLineItems } from "./line-items";
+import { LineItemsCard, TotalsRows, useLineItems, type CatalogOption } from "./line-items";
 import type { CustomerLite } from "./customer-match";
 
 /** Receipt for a sale paid on the spot: no invoice needed. */
-export function DirectReceiptEditor({ customers, taxRateBp, userId, defaultNotes }: {
-  customers: CustomerLite[]; taxRateBp: number; userId: string; defaultNotes?: string | null;
+export function DirectReceiptEditor({ customers, catalog, taxRateBp, userId, defaultNotes }: {
+  customers: CustomerLite[]; catalog: CatalogOption[]; taxRateBp: number; userId: string; defaultNotes?: string | null;
 }) {
   const lineItems = useLineItems(undefined, taxRateBp);
   const today = todayKL();
@@ -41,7 +41,7 @@ export function DirectReceiptEditor({ customers, taxRateBp, userId, defaultNotes
           </CardContent>
         </Card>
 
-        <LineItemsCard state={lineItems} />
+        <LineItemsCard state={lineItems} catalog={catalog} />
 
         <FormField label="Catatan pada resit (pilihan)" htmlFor="notes"><Textarea id="notes" name="notes" rows={2} defaultValue={defaultNotes ?? ""} /></FormField>
       </div>

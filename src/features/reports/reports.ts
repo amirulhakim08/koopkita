@@ -10,6 +10,24 @@ const label = (m: Record<string, { label: string }>, v: string) => m[v]?.label ?
 type Rel<T> = T | null;
 
 export const REPORTS: Record<string, Report> = {
+  "bisnes-ahli": {
+    title: "Jualan bisnes ahli",
+    description: "Jualan setiap bisnes ahli (invois + jualan langsung), wang diterima dan baki belum dibayar. Tiada butiran pelanggan atau item. Parameter: ?dari=YYYY-MM-DD&hingga=YYYY-MM-DD",
+    async build(sb, params) {
+      const d = (k: string) => (/^\d{4}-\d{2}-\d{2}$/.test(params.get(k) ?? "") ? params.get(k) : null);
+      const { data } = await sb.rpc("admin_business_report", { p_from: d("dari"), p_to: d("hingga") });
+      const rows = (data ?? []) as { name: string; ssm_no: string | null; ssm_verified: boolean; owner_name: string; membership_id: string | null;
+        suspended: boolean; invoice_count: number; invoiced_sen: number; direct_count: number; direct_sales_sen: number; total_sales_sen: number;
+        received_sen: number; outstanding_sen: number }[];
+      return {
+        headers: ["Bisnes", "No. SSM", "SSM Disahkan?", "Ahli", "No. Ahli", "Digantung?", "Bil. Invois", "Jualan Invois (RM)", "Bil. Jualan Langsung",
+          "Jualan Langsung (RM)", "Jumlah Jualan (RM)", "Diterima (RM)", "Belum Dibayar Kini (RM)"],
+        rows: rows.map((r) => [r.name, r.ssm_no, r.ssm_verified ? "Ya" : "Tidak", r.owner_name, r.membership_id, r.suspended ? "Ya" : "",
+          Number(r.invoice_count), senToDecimal(r.invoiced_sen), Number(r.direct_count), senToDecimal(r.direct_sales_sen),
+          senToDecimal(r.total_sales_sen), senToDecimal(r.received_sen), senToDecimal(r.outstanding_sen)]),
+      };
+    },
+  },
   "buku-tunai": {
     title: "Buku tunai koperasi",
     description: "Semua wang masuk dan keluar: modal syer, korban, komisen dan rekod manual (pengeluaran, perbelanjaan, perniagaan lain). Parameter: ?dari=YYYY-MM-DD&hingga=YYYY-MM-DD",

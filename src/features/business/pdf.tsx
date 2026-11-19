@@ -133,7 +133,7 @@ function BusinessDoc({ doc, logo }: { doc: DocumentJson; logo: Awaited<ReturnTyp
         ) : (
           <View style={s.table}>
             <View style={[s.tr, s.th]}>
-              <Text style={s.cDesc}>Perkara</Text><Text style={s.cNum}>Kuantiti</Text><Text style={s.cNum}>Harga</Text><Text style={s.cNum}>Diskaun</Text><Text style={s.cNum}>Jumlah</Text>
+              <Text style={s.cDesc}>Perkara</Text><Text style={s.cNum}>Unit</Text><Text style={s.cNum}>Harga</Text><Text style={s.cNum}>Diskaun</Text><Text style={s.cNum}>Jumlah</Text>
             </View>
             {inv.items.map((it, i) => (
               <View key={i} style={s.tr} wrap={false}>
