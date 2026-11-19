@@ -70,6 +70,8 @@ function BusinessDoc({ doc, logo }: { doc: DocumentJson; logo: Awaited<ReturnTyp
   const title = isReceipt ? "RESIT" : "INVOIS";
   const number = isReceipt ? p!.receipt_no : inv.invoice_no ?? "DRAF";
   const balance = inv.total_sen - inv.paid_sen;
+  const direct = Boolean(isReceipt && inv.is_direct); // receipt of a sale paid on the spot: shows its items, no invoice
+  const showItems = !isReceipt || direct;
   return (
     <Document title={`${title} ${number}`} author={b.name} creator="KoopKITA">
       <Page size="A4" style={s.page}>
@@ -110,7 +112,7 @@ function BusinessDoc({ doc, logo }: { doc: DocumentJson; logo: Awaited<ReturnTyp
                 <Text>Tarikh: {formatDate(p!.paid_on)}</Text>
                 <Text>Kaedah: {PAYMENT_METHODS[p!.method] ?? p!.method}</Text>
                 {p!.reference && <Text>Rujukan: {p!.reference}</Text>}
-                <Text>Untuk invois: {inv.invoice_no}</Text>
+                {!direct && <Text>Untuk invois: {inv.invoice_no}</Text>}
               </>
             ) : (
               <>
@@ -123,7 +125,7 @@ function BusinessDoc({ doc, logo }: { doc: DocumentJson; logo: Awaited<ReturnTyp
           </View>
         </View>
 
-        {isReceipt ? (
+        {!showItems ? (
           <View style={s.table}>
             <View style={[s.tr, s.th]}><Text style={s.cDesc}>Perkara</Text><Text style={[s.cNum, { width: 110 }]}>Jumlah (RM)</Text></View>
             <View style={s.tr}><Text style={s.cDesc}>Bayaran bagi invois {inv.invoice_no} (jumlah invois {formatRM(inv.total_sen)})</Text><Text style={[s.cNum, { width: 110 }]}>{senToDecimal(p!.amount_sen)}</Text></View>
@@ -146,7 +148,14 @@ function BusinessDoc({ doc, logo }: { doc: DocumentJson; logo: Awaited<ReturnTyp
         )}
 
         <View style={s.totals}>
-          {isReceipt ? (
+          {direct ? (
+            <>
+              <View style={s.totRow}><Text>Subjumlah</Text><Text>{formatRM(inv.subtotal_sen)}</Text></View>
+              {inv.discount_sen > 0 && <View style={s.totRow}><Text>Diskaun</Text><Text>-{formatRM(inv.discount_sen)}</Text></View>}
+              {inv.tax_sen > 0 && <View style={s.totRow}><Text>SST ({inv.tax_rate_bp / 100}%)</Text><Text>{formatRM(inv.tax_sen)}</Text></View>}
+              <View style={[s.totRow, s.grand]}><Text>Jumlah diterima</Text><Text>{formatRM(p!.amount_sen)}</Text></View>
+            </>
+          ) : isReceipt ? (
             <>
               <View style={[s.totRow, s.grand]}><Text>Jumlah diterima</Text><Text>{formatRM(p!.amount_sen)}</Text></View>
               <View style={s.totRow}><Text style={s.small}>Baki invois selepas bayaran ini</Text><Text style={s.small}>{formatRM(Math.max(0, p!.balance_after_sen))}</Text></View>
@@ -175,7 +184,7 @@ function BusinessDoc({ doc, logo }: { doc: DocumentJson; logo: Awaited<ReturnTyp
             <Text style={s.small}>Sila nyatakan {inv.invoice_no} sebagai rujukan bayaran.</Text>
           </View>
         )}
-        {inv.notes && !isReceipt && (
+        {inv.notes && (!isReceipt || direct) && (
           <View style={{ marginTop: 12 }}><Text style={s.label}>Catatan</Text><Text>{inv.notes}</Text></View>
         )}
         {inv.status === "cancelled" && inv.cancel_reason && !isReceipt && (

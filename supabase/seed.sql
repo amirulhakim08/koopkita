@@ -105,6 +105,9 @@ begin
     '[{"description":"Baja organik 25kg","quantity":4,"unit_price_sen":4500,"discount_sen":0},{"description":"Benih cili (pek)","quantity":10,"unit_price_sen":350,"discount_sen":0},{"description":"Penghantaran","quantity":1,"unit_price_sen":1500,"discount_sen":0}]');
   perform public.issue_invoice(v_inv);
   perform public.record_invoice_payment(v_inv, 10000, current_date - 1, 'duitnow', 'DEV-DN-0001', null, 'dev-biz-pay-1');
+  -- a direct-sale receipt (no invoice) for a walk-in customer
+  perform public.create_direct_receipt(null, current_date, 'cash', null, null, null,
+    '[{"description":"Cili padi segar (kg)","quantity":2,"unit_price_sen":1200,"discount_sen":0}]', 'dev-biz-direct-1');
 
   -- member 2: a sale awaiting payment proof (reserved slots)
   perform set_config('request.jwt.claims', json_build_object('sub', v_m2, 'role', 'authenticated', 'aal', 'aal1')::text, true);

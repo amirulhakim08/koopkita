@@ -42,7 +42,10 @@ test("Bisnes Saya: profile + logo → customer → invoice → share PDF → pub
 
   // 3. invoice
   await page.goto("/ahli/bisnes/invois/baharu");
-  await page.getByLabel("Pelanggan").selectOption({ label: "Puan Aminah Ujian (0135556666)" });
+  // the customer box finds an existing customer by phone number
+  await page.getByPlaceholder("Cari nama atau no. telefon").fill("013555");
+  await page.getByRole("option", { name: /Puan Aminah Ujian/ }).click();
+  await expect(page.getByTestId("customer-chosen")).toHaveText("Puan Aminah Ujian");
   await page.getByLabel("Perkara 1").fill("Sewa homestay 2 malam");
   await page.locator('input[name="items.0.quantity"]').fill("2");
   await page.locator('input[name="items.0.unit_price"]').fill("180");
@@ -94,14 +97,58 @@ test("Bisnes Saya: profile + logo → customer → invoice → share PDF → pub
   await expect.poll(async () => (await shared()).length).toBe(1); // the reload reset the capture
   expect((await shared())[0].name).toBe(`Resit-${receiptNo}.pdf`);
 
-  // 7. turning off the link stops the customer page
+  // 7. a direct-sale receipt (no invoice): a new customer is typed in and saved
+  await page.goto("/ahli/bisnes?tab=resit");
+  await page.getByRole("link", { name: "Resit Jualan Langsung" }).click();
+  await page.getByPlaceholder("Cari nama atau no. telefon").fill("Encik Hamid Ujian");
+  await page.getByRole("option", { name: /Tambah pelanggan baharu/ }).click();
+  await expect(page.getByLabel("Nama pelanggan")).toHaveValue("Encik Hamid Ujian");
+  // a number that already belongs to a customer is offered instead of creating a duplicate
+  await page.getByLabel("No. telefon (pilihan)").fill("013-555 6666");
+  await expect(page.getByText("Nombor ini milik")).toContainText("Puan Aminah Ujian");
+  await page.getByLabel("No. telefon (pilihan)").fill("0177778888");
+  await expect(page.getByText("Nombor ini milik")).toHaveCount(0);
+  await page.getByLabel("Perkara 1").fill("Jem nanas");
+  await page.locator('input[name="items.0.quantity"]').fill("3");
+  await page.locator('input[name="items.0.unit_price"]').fill("8");
+  await expect(page.getByText("RM 24.00").last()).toBeVisible();
+  await page.getByRole("button", { name: "Jana resit" }).click();
+  await expect(page.getByText("Resit dijana").first()).toBeVisible();
+  const directNo = (await page.getByRole("heading", { level: 1 }).textContent())!.trim();
+  expect(directNo).toMatch(/^RCP-\d{4}-0002$/);
+  await expect(page.getByText("Jualan langsung")).toBeVisible();
+  await expect(page.getByText("Jem nanas")).toBeVisible();
+  await page.getByRole("button", { name: "Kongsi PDF" }).click();
+  await expect.poll(async () => (await shared()).length).toBe(1);
+  expect((await shared())[0].name).toBe(`Resit-${directNo}.pdf`);
+  const directWa = await page.getByRole("link", { name: "WhatsApp" }).first().getAttribute("href");
+  expect(directWa).toContain("wa.me/60177778888");
+  const directUrl = decodeURIComponent(directWa!).match(/https?:\/\/[^\s]+\/d\/[A-Za-z0-9_-]{32}/)![0];
+  // not listed as an invoice; the new customer is saved and can be found next time
+  await page.goto("/ahli/bisnes?tab=invois");
+  await expect(page.getByRole("row")).toHaveCount(2); // header + the one invoice
+  await page.goto("/ahli/bisnes?tab=pelanggan");
+  await expect(page.getByText("Encik Hamid Ujian")).toBeVisible();
+  await page.goto("/ahli/bisnes/resit/baharu");
+  await page.getByPlaceholder("Cari nama atau no. telefon").fill("hamid");
+  await expect(page.getByRole("option", { name: /Encik Hamid Ujian/ })).toBeVisible();
+  const anon2 = await browser.newContext();
+  const cust2 = await anon2.newPage();
+  await cust2.goto(directUrl);
+  await expect(cust2.getByText(directNo, { exact: true })).toBeVisible();
+  await expect(cust2.getByText("Jem nanas")).toBeVisible();
+  await expect(cust2.getByText("Invois:")).toHaveCount(0);
+  await anon2.close();
+  await page.goto(invoiceUrl);
+
+  // 8. turning off the link stops the customer page
   await page.getByRole("button", { name: "Matikan pautan" }).click();
   await expect(page.getByText("Pautan dimatikan.")).toBeVisible();
   await cust.goto(publicUrl);
   await expect(cust.getByText("Dokumen tidak tersedia")).toBeVisible();
   await anon.close();
 
-  // 8. another member cannot open the invoice or its PDF
+  // 9. another member cannot open the invoice or its PDF
   await logout(page);
   await login(page, { email: "ahli3@koopkita.test", password: "DevAhli#2026" });
   await page.goto(invoiceUrl);
@@ -109,7 +156,7 @@ test("Bisnes Saya: profile + logo → customer → invoice → share PDF → pub
   const invoiceId = invoiceUrl.split("/").pop()!.split("?")[0];
   expect((await page.request.get(`/api/bisnes/dokumen?jenis=invoice&id=${invoiceId}`)).status()).toBe(404);
 
-  // 9. Super Admin sees the business (totals only) and verifies the SSM
+  // 10. Super Admin sees the business (totals only) and verifies the SSM
   await logout(page);
   await login(page, ADMIN);
   await page.goto("/admin/bisnes");

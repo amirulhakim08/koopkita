@@ -30,6 +30,7 @@ export default async function PublicDocumentPage({ params }: { params: Promise<{
   const b = inv.business;
   const p = doc.kind === "receipt" ? doc.payment : null;
   const logo = logoUrl(b.logo_path);
+  const direct = Boolean(p && inv.is_direct); // receipt of a sale paid on the spot: items, no invoice
   const stamp = p ? (p.reversed ? ["DIBALIKKAN", "text-danger border-danger"] : ["DIBAYAR", "text-success border-success"])
     : inv.status === "cancelled" ? ["DIBATALKAN", "text-danger border-danger"] : inv.status === "paid" ? ["DIBAYAR", "text-success border-success"] : null;
 
@@ -67,7 +68,7 @@ export default async function PublicDocumentPage({ params }: { params: Promise<{
                   <p>Tarikh: {formatDate(p.paid_on)}</p>
                   <p>Kaedah: {PAYMENT_METHODS[p.method] ?? p.method}</p>
                   {p.reference && <p>Rujukan: {p.reference}</p>}
-                  <p>Invois: {inv.invoice_no}</p>
+                  {!direct && <p>Invois: {inv.invoice_no}</p>}
                 </>
               ) : (
                 <>
@@ -79,7 +80,7 @@ export default async function PublicDocumentPage({ params }: { params: Promise<{
             </div>
           </div>
 
-          {p ? (
+          {p && !direct ? (
             <div className="mt-6 flex items-center justify-between rounded-xl bg-success-soft p-4 text-success">
               <span className="font-semibold">Jumlah diterima</span><span className="text-2xl font-black tabular-nums">{formatRM(p.amount_sen)}</span>
             </div>
@@ -96,10 +97,10 @@ export default async function PublicDocumentPage({ params }: { params: Promise<{
               <dl className="ml-auto mt-3 w-full max-w-xs space-y-1 text-sm">
                 {inv.discount_sen > 0 && <div className="flex justify-between"><dt>Diskaun</dt><dd>-{formatRM(inv.discount_sen)}</dd></div>}
                 {inv.tax_sen > 0 && <div className="flex justify-between"><dt>SST ({inv.tax_rate_bp / 100}%)</dt><dd>{formatRM(inv.tax_sen)}</dd></div>}
-                <div className="flex justify-between border-t pt-1 text-lg font-black"><dt>Jumlah</dt><dd>{formatRM(inv.total_sen)}</dd></div>
-                {inv.paid_sen > 0 && <div className="flex justify-between font-semibold"><dt>Baki</dt><dd>{formatRM(inv.total_sen - inv.paid_sen)}</dd></div>}
+                <div className="flex justify-between border-t pt-1 text-lg font-black"><dt>{direct ? "Jumlah diterima" : "Jumlah"}</dt><dd>{formatRM(direct ? p!.amount_sen : inv.total_sen)}</dd></div>
+                {inv.paid_sen > 0 && !direct && <div className="flex justify-between font-semibold"><dt>Baki</dt><dd>{formatRM(inv.total_sen - inv.paid_sen)}</dd></div>}
               </dl>
-              {b.bank_account_no && inv.status !== "paid" && inv.status !== "cancelled" && (
+              {b.bank_account_no && !direct && inv.status !== "paid" && inv.status !== "cancelled" && (
                 <div className="mt-6 rounded-xl bg-accent-soft p-4 text-sm">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Cara bayaran</p>
                   <p><strong>{b.bank_name}</strong> · <span className="font-mono font-bold">{b.bank_account_no}</span></p>

@@ -8,6 +8,7 @@ import { fail, parseDbError, type ActionState } from "@/lib/errors";
 import { fieldErrors, moneySchema, pastDateSchema, phoneSchema, reasonSchema, receiptPathSchema } from "@/lib/validation";
 import { callRpc } from "@/lib/rpc";
 import { parseRMToSen } from "@/lib/format";
+import { findByPhone } from "./customer-match";
 
 const trim = (v: unknown) => (typeof v === "string" ? v.trim() : v);
 const emptyToUndef = (v: unknown) => (typeof v === "string" && v.trim() === "" ? undefined : trim(v));
@@ -100,7 +101,6 @@ const itemSchema = z.object({
 
 const draftSchema = z.object({
   id: z.preprocess(emptyToUndef, uuid.optional()),
-  customer_id: uuid.or(z.literal("")).refine((v) => v !== "", "Sila pilih pelanggan"),
   issue_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarikh tidak sah"),
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarikh tidak sah"),
   notes: z.preprocess(emptyToUndef, z.string().max(1000).optional()),
@@ -108,22 +108,77 @@ const draftSchema = z.object({
   intent: z.enum(["save", "issue"]),
 }).refine((d) => d.due_date >= d.issue_date, { path: ["due_date"], message: "Tarikh akhir mesti selepas tarikh invois" });
 
-export async function saveInvoiceAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  await requireActiveMember();
+type ParsedItem = z.infer<typeof itemSchema>;
+
+/** Rows items.N.* posted by LineItemsCard (blank rows are ignored). */
+function postedItems(formData: FormData) {
   const count = Number(formData.get("item_count") ?? 0);
-  const items = Array.from({ length: Math.min(Math.max(count, 0), 100) }, (_, i) => ({
+  return Array.from({ length: Math.min(Math.max(count, 0), 100) }, (_, i) => ({
     description: formData.get(`items.${i}.description`), quantity: formData.get(`items.${i}.quantity`),
     unit_price: formData.get(`items.${i}.unit_price`), discount: formData.get(`items.${i}.discount`),
   })).filter((it) => String(it.description ?? "").trim() !== "" || String(it.unit_price ?? "").trim() !== "");
-  const parsed = draftSchema.safeParse({ ...Object.fromEntries(formData), items, intent: formData.get("intent") ?? "save" });
+}
+
+function itemsForRpc(items: ParsedItem[]): { error?: string; rows: { description: string; quantity: number; unit_price_sen: number; discount_sen: number }[] } {
+  for (const [i, it] of items.entries()) {
+    if (it.discount > Math.round(it.quantity * it.unit_price)) return { error: `Diskaun item ${i + 1} melebihi jumlah item.`, rows: [] };
+  }
+  return { rows: items.map((it) => ({ description: it.description, quantity: it.quantity, unit_price_sen: it.unit_price, discount_sen: it.discount })) };
+}
+
+const newCustomerSchema = z.object({
+  name: z.preprocess(trim, z.string().min(2, "Nama pelanggan diperlukan").max(150)),
+  phone: z.preprocess((v) => (typeof v === "string" ? v.replace(/[\s-]/g, "") || undefined : v), z.string().regex(/^\+?[0-9]{9,15}$/, "Nombor telefon tidak sah").optional()),
+});
+
+/**
+ * The customer chosen in CustomerPicker: an existing one, a new one (saved now; a customer
+ * with the same phone number is reused), or none for a walk-in sale.
+ */
+async function resolveCustomer(formData: FormData, allowWalkIn: boolean): Promise<{ id: string | null } | { error: ActionState }> {
+  const mode = formData.get("customer_mode");
+  if (mode === "walkin" && allowWalkIn) return { id: null };
+  if (mode === "existing") {
+    const id = uuid.safeParse(formData.get("customer_id"));
+    if (id.success) return { id: id.data };
+  }
+  if (mode !== "new") return { error: fail("Sila pilih pelanggan.", { customer: ["Sila pilih atau tambah pelanggan"] }) };
+
+  const parsed = newCustomerSchema.safeParse({ name: formData.get("customer_name"), phone: formData.get("customer_phone") });
+  if (!parsed.success) {
+    const fe = fieldErrors(parsed.error);
+    return { error: fail("Sila semak maklumat pelanggan.", { customer_name: fe.name ?? [], customer_phone: fe.phone ?? [] }) };
+  }
+  const businessId = await myBusinessId();
+  if (!businessId) return { error: fail("Sila lengkapkan Profil Bisnes dahulu.") };
+  const supabase = await createClient();
+  // reuse a customer with the same phone number (or, without a number, the same name and no number),
+  // so a retried submission or a typed-in regular customer does not create a duplicate
+  const { data: existing } = await supabase.from("business_customers").select("id, name, phone").eq("business_id", businessId);
+  const name = parsed.data.name.toLowerCase();
+  const same = parsed.data.phone
+    ? findByPhone(existing ?? [], parsed.data.phone)
+    : (existing ?? []).find((c) => !c.phone && c.name.trim().toLowerCase() === name);
+  if (same) return { id: same.id };
+  const { data, error } = await supabase.from("business_customers")
+    .insert({ business_id: businessId, name: parsed.data.name, phone: parsed.data.phone ?? null }).select("id").single();
+  if (error) return { error: fail("Pelanggan tidak dapat disimpan.") };
+  revalidatePath("/ahli/bisnes", "layout");
+  return { id: data.id };
+}
+
+export async function saveInvoiceAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireActiveMember();
+  const parsed = draftSchema.safeParse({ ...Object.fromEntries(formData), items: postedItems(formData), intent: formData.get("intent") ?? "save" });
   if (!parsed.success) return fail("Sila semak invois.", fieldErrors(parsed.error));
   const d = parsed.data;
-  for (const [i, it] of d.items.entries()) {
-    if (it.discount > Math.round(it.quantity * it.unit_price)) return fail(`Diskaun item ${i + 1} melebihi jumlah item.`);
-  }
+  const items = itemsForRpc(d.items);
+  if (items.error) return fail(items.error);
+  const customer = await resolveCustomer(formData, false);
+  if ("error" in customer) return customer.error;
   const saved = await callRpc<string>("save_invoice_draft", {
-    p_id: d.id ?? null, p_customer_id: d.customer_id, p_issue_date: d.issue_date, p_due_date: d.due_date, p_notes: d.notes ?? null,
-    p_items: d.items.map((it) => ({ description: it.description, quantity: it.quantity, unit_price_sen: it.unit_price, discount_sen: it.discount })),
+    p_id: d.id ?? null, p_customer_id: customer.id, p_issue_date: d.issue_date, p_due_date: d.due_date, p_notes: d.notes ?? null,
+    p_items: items.rows,
   }, { success: "Draf disimpan.", revalidate: ["/ahli/bisnes"] });
   if (!saved?.ok) return saved;
   if (d.intent === "issue") {
@@ -131,6 +186,34 @@ export async function saveInvoiceAction(_prev: ActionState, formData: FormData):
     if (!issued?.ok) return issued;
   }
   redirect(`/ahli/bisnes/invois/${saved.data}${d.intent === "issue" ? "?dikeluarkan=1" : ""}`);
+}
+
+const directSchema = z.object({
+  paid_on: pastDateSchema,
+  method: z.enum(["bank_transfer", "duitnow", "cash", "card", "cheque", "other"]),
+  reference: z.preprocess(emptyToUndef, z.string().max(100).optional()),
+  proof_path: z.preprocess(emptyToUndef, receiptPathSchema.optional()),
+  notes: z.preprocess(emptyToUndef, z.string().max(1000).optional()),
+  items: z.array(itemSchema).min(1, "Tambah sekurang-kurangnya satu item").max(100),
+  idempotency_key: uuid,
+});
+
+/** Resit Jualan Langsung: a receipt for a sale paid on the spot, without an invoice. */
+export async function createDirectReceiptAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireActiveMember();
+  const parsed = directSchema.safeParse({ ...Object.fromEntries(formData), items: postedItems(formData) });
+  if (!parsed.success) return fail("Sila semak resit.", fieldErrors(parsed.error));
+  const d = parsed.data;
+  const items = itemsForRpc(d.items);
+  if (items.error) return fail(items.error);
+  const customer = await resolveCustomer(formData, true);
+  if ("error" in customer) return customer.error;
+  const res = await callRpc<string>("create_direct_receipt", {
+    p_customer_id: customer.id, p_paid_on: d.paid_on, p_method: d.method, p_reference: d.reference ?? null,
+    p_proof_path: d.proof_path ?? null, p_notes: d.notes ?? null, p_items: items.rows, p_idempotency_key: d.idempotency_key,
+  }, { success: "Resit dijana.", revalidate: ["/ahli/bisnes"] });
+  if (!res?.ok) return res;
+  redirect(`/ahli/bisnes/resit/${res.data}?dijana=1`);
 }
 
 export async function deleteDraftAction(_prev: ActionState, formData: FormData): Promise<ActionState> {

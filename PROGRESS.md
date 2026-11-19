@@ -71,7 +71,7 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
 
 ## Phase 7 — Deployment ✅ (live, iterating)
 - ✅ Supabase project **mydevelopment** (`pikifjnwjpzoeqhorvpe`, ap-southeast-1 Singapore), used for KoopKITA only.
-- ✅ Migrations 000001–000012 applied (schema only, **no seed data**). After each one, the full schema fingerprint (functions, columns, constraints, policies, triggers, grants) matched the tested local stack.
+- ✅ Migrations 000001–000013 applied (schema only, **no seed data**). After each one, the full schema fingerprint (functions, columns, constraints, policies, triggers, grants) matched the tested local stack.
 - ✅ Private buckets `receipts`, `payout-proofs`, `business-proofs`; public `business-logos`; pg_cron job `koopkita-expire-reservations` (every 15 min).
 - ✅ Vercel project `koopkita` deployed from `main` at https://koopkita.vercel.app with the 3 public env vars.
 - ✅ First Super Admin provisioned (KITA-0001).
@@ -87,6 +87,14 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
   - Enter the official cooperative bank account and cooperative details (reg. no, address, logo) in Tetapan
 
 ## Change log
+- **2026-11-19: direct-sale receipts + customer search (migration 000013, applied; production fingerprint matches local).**
+  - **Resit Jualan Langsung:** a receipt for a sale paid on the spot, with no invoice. Items, SST, payment method, optional OCR'd proof. Numbered `RCP-YYYY-NNNN` from the same sequence.
+  - Stored as a paid "direct" sale that is never listed, shared or paid as an invoice. Reversing its receipt cancels the sale.
+  - The customer is optional ("Pelanggan Tunai").
+  - **Customer box** (invoices and receipts): search by name or phone, or add a new customer on the spot (phone optional). It is saved to the member's Pelanggan list. A phone number that already belongs to a customer is offered instead of creating a duplicate, and the server reuses it too.
+  - Receipt detail page `/ahli/bisnes/resit/<id>`. The PDF and public link show the items for direct-sale receipts.
+  - "Catatan lalai" renamed to "Nota tetap".
+  - Tests: unit 36/36, integration 65/65, e2e 20/20.
 - **2026-11-19: "Bisnes Saya" — member business invoices and receipts (migration 000012, applied; production fingerprint matches local).**
   - Business profile: name, optional SSM (format-checked), phone, e-mail, address, bank, logo (public `business-logos` bucket), optional SST.
   - Customers; invoices (draft → issue with `INV-YYYY-NNNN`, locked after issue, cancel with reason).

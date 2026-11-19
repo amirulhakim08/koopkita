@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Link2Off } from "lucide-react";
 import { z } from "zod";
 import { PageHeader } from "@/components/page-header";
@@ -23,7 +23,7 @@ type Inv = {
   id: string; business_id: string; customer_id: string; invoice_no: string | null; status: string; issue_date: string; due_date: string;
   subtotal_sen: number; discount_sen: number; tax_rate_bp: number; tax_sen: number; total_sen: number; paid_sen: number;
   notes: string | null; share_token: string | null; share_enabled: boolean; cancel_reason: string | null;
-  customer_snapshot: { name: string; phone: string | null } | null;
+  customer_snapshot: { name: string; phone: string | null } | null; is_direct: boolean;
 };
 type Item = { description: string; quantity: number; unit_price_sen: number; discount_sen: number; line_total_sen: number };
 type Pay = { id: string; receipt_no: string; amount_sen: number; paid_on: string; method: string; reference: string | null; share_token: string; share_enabled: boolean; reversed_at: string | null; reverse_reason: string | null };
@@ -37,6 +37,12 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
   const { data } = await supabase.from("business_invoices").select("*").eq("id", id).maybeSingle();
   if (!data) notFound();
   const inv = data as Inv;
+  if (inv.is_direct) {
+    // a direct sale has no invoice page of its own: show its receipt
+    const { data: pay } = await supabase.from("business_payments").select("id").eq("invoice_id", id).limit(1).maybeSingle();
+    if (pay) redirect(`/ahli/bisnes/resit/${pay.id}`);
+    notFound();
+  }
   const [{ data: items }, { data: pays }, { data: business }, { data: customers }] = await Promise.all([
     supabase.from("business_invoice_items").select("*").eq("invoice_id", id).order("position"),
     supabase.from("business_payments").select("*").eq("invoice_id", id).order("created_at"),
