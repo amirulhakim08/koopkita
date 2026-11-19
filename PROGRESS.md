@@ -87,6 +87,12 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
   - Enter the official cooperative bank account and cooperative details (reg. no, address, logo) in Tetapan
 
 ## Change log
+- **2026-11-19: daily document numbers (migration 000015; local only, NOT yet applied to production).**
+  - New invoices and receipts are numbered `INV-YYMMDDNNN` and `RCP-YYMMDDNNN`, e.g. `INV-260125001` for the first invoice dated 25 January 2026.
+  - The sequence restarts daily, separately per business and per kind. Invoices use the invoice date; receipts use the payment or sale date.
+  - The 1000th document of a day grows to 4 digits instead of wrapping.
+  - Issued documents keep their old numbers. The cooperative Qurban receipt is unchanged.
+  - Tests: unit 36/36, integration 68/68, e2e 21/21.
 - **2026-11-19: product/service catalogue + Super Admin sales report (migration 000014, applied; production fingerprint matches local).**
   - **Katalog** tab in Bisnes Saya. Each member lists their own products or services with a preferred price; the catalogue starts empty. Items are hidden, never deleted. Owner only (admin cannot see it).
   - On invoices and receipts, tapping the item field opens the catalogue. The member ticks one or more items and taps **Pilih**, then **confirms the prices** once; the items fill Perkara 1, 2 … (adding rows when needed). The catalogue price stays unchanged. "Lain-lain" lets the member type an item; ticking "Simpan ke katalog" adds it to the catalogue.

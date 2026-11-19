@@ -76,7 +76,7 @@ test("Bisnes Saya: profile + logo → customer → invoice → share PDF → pub
   await page.getByRole("button", { name: "Keluarkan" }).click();
   await expect(page.getByText("Invois dikeluarkan").first()).toBeVisible();
   const invoiceNo = (await page.getByRole("heading", { level: 1 }).textContent())!.trim();
-  expect(invoiceNo).toMatch(/^INV-\d{4}-0001$/);
+  expect(invoiceNo).toMatch(/^INV-\d{6}001$/);
   const invoiceUrl = page.url();
   // the typed-in item is now in the catalogue; the catalogue price of the picked item is unchanged
   await page.goto("/ahli/bisnes?tab=katalog");
@@ -116,7 +116,7 @@ test("Bisnes Saya: profile + logo → customer → invoice → share PDF → pub
   await expect(page.getByText("Bayaran direkodkan dan resit dijana.")).toBeVisible();
   await page.reload();
   await expect(page.getByText("Dibayar", { exact: true }).first()).toBeVisible();
-  const receiptNo = (await page.getByText(/^RCP-\d{4}-0001/).first().textContent())!.trim().slice(0, 13);
+  const receiptNo = (await page.getByText(/^RCP-\d{6}001/).first().textContent())!.trim().slice(0, 13);
   await page.locator("#resit").getByRole("button", { name: "Kongsi PDF" }).click();
   await expect.poll(async () => (await shared()).length).toBe(1); // the reload reset the capture
   expect((await shared())[0].name).toBe(`Resit-${receiptNo}.pdf`);
@@ -139,7 +139,7 @@ test("Bisnes Saya: profile + logo → customer → invoice → share PDF → pub
   await page.getByRole("button", { name: "Jana resit" }).click();
   await expect(page.getByText("Resit dijana").first()).toBeVisible();
   const directNo = (await page.getByRole("heading", { level: 1 }).textContent())!.trim();
-  expect(directNo).toMatch(/^RCP-\d{4}-0002$/);
+  expect(directNo).toMatch(/^RCP-\d{6}002$/);
   await expect(page.getByText("Jualan langsung")).toBeVisible();
   await expect(page.getByText("Jem nanas")).toBeVisible();
   await page.getByRole("button", { name: "Kongsi PDF" }).click();
@@ -204,14 +204,14 @@ test("without a file share sheet (desktop browsers), Kongsi PDF offers download 
   });
   await login(page, { email: "ahli1@koopkita.test", password: "DevAhli#2026" });
   await page.goto("/ahli/bisnes");
-  await page.getByRole("link", { name: /INV-\d{4}-0001/ }).first().click();
+  await page.getByRole("link", { name: /INV-\d{6}001/ }).first().click();
   await page.getByRole("button", { name: "Kongsi PDF" }).first().click();
   const dialog = page.getByRole("dialog", { name: "Pilihan kongsi" });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("link", { name: "E-mel" })).toHaveAttribute("href", /^mailto:/);
   const download = page.waitForEvent("download");
   await dialog.getByRole("button", { name: "Muat turun PDF" }).click();
-  expect((await download).suggestedFilename()).toMatch(/^Invois-INV-\d{4}-0001\.pdf$/);
+  expect((await download).suggestedFilename()).toMatch(/^Invois-INV-\d{6}001\.pdf$/);
 });
 
 test("official cooperative receipt PDF for an approved Qurban sale", async ({ page }) => {
