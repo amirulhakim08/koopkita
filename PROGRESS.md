@@ -71,7 +71,7 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
 
 ## Phase 7 — Deployment ✅ (live, iterating)
 - ✅ Supabase project **mydevelopment** (`pikifjnwjpzoeqhorvpe`, ap-southeast-1 Singapore), used for KoopKITA only.
-- ✅ Migrations 000001–000012 applied (schema only, **no seed data**). After each one, the full schema fingerprint (functions, columns, constraints, policies, triggers, grants) matched the tested local stack.
+- ✅ Migrations 000001–000013 applied (schema only, **no seed data**). After each one, the full schema fingerprint (functions, columns, constraints, policies, triggers, grants) matched the tested local stack.
 - ✅ Private buckets `receipts`, `payout-proofs`, `business-proofs`; public `business-logos`; pg_cron job `koopkita-expire-reservations` (every 15 min).
 - ✅ Vercel project `koopkita` deployed from `main` at https://koopkita.vercel.app with the 3 public env vars.
 - ✅ First Super Admin provisioned (KITA-0001).
@@ -87,7 +87,7 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
   - Enter the official cooperative bank account and cooperative details (reg. no, address, logo) in Tetapan
 
 ## Change log
-- **2026-11-19: direct-sale receipts + customer search (migration 000013; local only, NOT yet applied to production).**
+- **2026-11-19: direct-sale receipts + customer search (migration 000013, applied; production fingerprint matches local).**
   - **Resit Jualan Langsung:** a receipt for a sale paid on the spot, with no invoice. Items, SST, payment method, optional OCR'd proof. Numbered `RCP-YYYY-NNNN` from the same sequence.
   - Stored as a paid "direct" sale that is never listed, shared or paid as an invoice. Reversing its receipt cancels the sale.
   - The customer is optional ("Pelanggan Tunai").
