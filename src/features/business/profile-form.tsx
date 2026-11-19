@@ -52,7 +52,7 @@ export function BusinessProfileForm({ userId, business }: { userId: string; busi
           </div>
         )}
       </fieldset>
-      <FormField label="Catatan lalai pada invois (pilihan)" htmlFor="default_notes" hint="cth. Terima kasih atas sokongan anda.">
+      <FormField label="Nota tetap pada invois (pilihan)" htmlFor="default_notes" hint="Dimasukkan secara automatik pada setiap invois baharu dan boleh diubah setiap kali. Cth. Terima kasih atas sokongan anda.">
         <Textarea id="default_notes" name="default_notes" rows={2} defaultValue={business?.default_notes ?? ""} />
       </FormField>
       <SubmitButton>Simpan profil bisnes</SubmitButton>
