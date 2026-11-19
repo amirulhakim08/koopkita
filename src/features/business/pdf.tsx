@@ -25,6 +25,7 @@ const s = StyleSheet.create({
   table: { borderWidth: 1, borderColor: BORDER, borderRadius: 6 },
   tr: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: BORDER, paddingVertical: 6, paddingHorizontal: 8 },
   th: { backgroundColor: "#f1f5f0", fontSize: 8, color: MUTED, fontFamily: "Helvetica-Bold" },
+  cNo: { width: 24, color: MUTED },
   cDesc: { flexGrow: 1, flexBasis: 0 },
   cNum: { width: 62, textAlign: "right" },
   totals: { alignSelf: "flex-end", width: 230, marginTop: 10 },
@@ -129,10 +130,11 @@ function BusinessDoc({ doc, logo }: { doc: DocumentJson; logo: Awaited<ReturnTyp
         {(
           <View style={s.table}>
             <View style={[s.tr, s.th]}>
-              <Text style={s.cDesc}>Perkara</Text><Text style={s.cNum}>Unit</Text><Text style={s.cNum}>Harga</Text><Text style={s.cNum}>Diskaun</Text><Text style={s.cNum}>Jumlah</Text>
+              <Text style={s.cNo}>No.</Text><Text style={s.cDesc}>Perkara</Text><Text style={s.cNum}>Unit</Text><Text style={s.cNum}>Harga</Text><Text style={s.cNum}>Diskaun</Text><Text style={s.cNum}>Jumlah</Text>
             </View>
             {inv.items.map((it, i) => (
               <View key={i} style={s.tr} wrap={false}>
+                <Text style={s.cNo}>{i + 1}</Text>
                 <Text style={s.cDesc}>{it.description}</Text>
                 <Text style={s.cNum}>{qty(it.quantity)}</Text>
                 <Text style={s.cNum}>{senToDecimal(it.unit_price_sen)}</Text>

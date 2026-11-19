@@ -102,10 +102,11 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
             <CardHeader><CardTitle>Butiran</CardTitle><CardDescription>Tarikh {formatDate(inv.issue_date)} · Tarikh akhir {formatDate(inv.due_date)}</CardDescription></CardHeader>
             <CardContent className="space-y-3">
               <Table>
-                <THead><TR><TH>Perkara</TH><TH className="text-right">Unit</TH><TH className="text-right">Harga</TH><TH className="text-right">Diskaun</TH><TH className="text-right">Jumlah</TH></TR></THead>
+                <THead><TR><TH className="w-10">No.</TH><TH>Perkara</TH><TH className="text-right">Unit</TH><TH className="text-right">Harga</TH><TH className="text-right">Diskaun</TH><TH className="text-right">Jumlah</TH></TR></THead>
                 <TBody>
                   {its.map((it, i) => (
                     <TR key={i}>
+                      <TD className="text-muted-foreground tabular-nums">{i + 1}</TD>
                       <TD>{it.description}</TD>
                       <TD className="text-right">{Number(it.quantity)}</TD>
                       <TD className="whitespace-nowrap text-right tabular-nums">{formatRM(it.unit_price_sen)}</TD>

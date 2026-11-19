@@ -83,10 +83,10 @@ export default async function PublicDocumentPage({ params }: { params: Promise<{
 
           {p && !direct && <p className="mt-6 text-xs uppercase tracking-wide text-muted-foreground">Butiran invois {inv.invoice_no}</p>}
           <table className={p && !direct ? "mt-1 w-full text-sm" : "mt-6 w-full text-sm"}>
-            <thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="py-2">Perkara</th><th className="py-2 text-right">Unit</th><th className="py-2 text-right">Jumlah</th></tr></thead>
+            <thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="w-8 py-2">No.</th><th className="py-2">Perkara</th><th className="py-2 text-right">Unit</th><th className="py-2 text-right">Jumlah</th></tr></thead>
             <tbody>
               {inv.items.map((it, i) => (
-                <tr key={i} className="border-b"><td className="py-2">{it.description}</td><td className="py-2 text-right">{Number(it.quantity)}</td><td className="py-2 text-right tabular-nums">{formatRM(it.line_total_sen)}</td></tr>
+                <tr key={i} className="border-b"><td className="py-2 text-muted-foreground tabular-nums">{i + 1}</td><td className="py-2">{it.description}</td><td className="py-2 text-right">{Number(it.quantity)}</td><td className="py-2 text-right tabular-nums">{formatRM(it.line_total_sen)}</td></tr>
               ))}
             </tbody>
           </table>
