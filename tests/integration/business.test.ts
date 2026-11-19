@@ -182,7 +182,7 @@ describe("direct-sale receipts (no invoice)", () => {
     expect([inv.customer_id, inv.customer_snapshot.name]).toEqual([null, "Pelanggan Tunai"]);
     await expect(direct(owner, null, [])).rejects.toThrow(/sekurang-kurangnya/);
     await expect(direct(owner, null, [{ description: "Percuma", quantity: 1, unit_price_sen: 0, discount_sen: 0 }])).rejects.toThrow(/sifar/);
-    await expect(direct(owner, null, items, key(), "current_date + 1")).rejects.toThrow(/Tarikh/);
+    await expect(direct(owner, null, items, key(), "(now() at time zone 'Asia/Kuala_Lumpur')::date + 1") /* the app validates dates in Malaysian time */).rejects.toThrow(/Tarikh/);
     // another member's customer cannot be used
     const third = await createActiveMember(pool, admin, "ketiga@kita.test");
     const [{ id: otherBiz }] = await asUser<{ id: string }>(pool, third, `select public.save_my_business($1) as id`, [{ ...profile, name: "Bisnes Lain" }]);
