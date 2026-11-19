@@ -1,6 +1,6 @@
 # KoopKITA V1.0 — Development progress
 
-Last updated: 2026-11-17
+Last updated: 2026-11-19
 
 Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ not started / outstanding
 
@@ -71,21 +71,32 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
 
 ## Phase 7 — Deployment ✅ (live, iterating)
 - ✅ Supabase project **mydevelopment** (`pikifjnwjpzoeqhorvpe`, ap-southeast-1 Singapore), used for KoopKITA only.
-- ✅ Migrations 000001–000011 applied (schema only, **no seed data**). After each one, the full schema fingerprint (functions, columns, constraints, policies, triggers, grants) matched the tested local stack.
-- ✅ Private buckets `receipts` and `payout-proofs`; pg_cron job `koopkita-expire-reservations` (every 15 min).
+- ✅ Migrations 000001–000012 applied (schema only, **no seed data**). After each one, the full schema fingerprint (functions, columns, constraints, policies, triggers, grants) matched the tested local stack.
+- ✅ Private buckets `receipts`, `payout-proofs`, `business-proofs`; public `business-logos`; pg_cron job `koopkita-expire-reservations` (every 15 min).
 - ✅ Vercel project `koopkita` deployed from `main` at https://koopkita.vercel.app with the 3 public env vars.
 - ✅ First Super Admin provisioned (KITA-0001).
 - ✅ Security Advisors: no errors. Expected findings only:
   - WARN "authenticated can execute SECURITY DEFINER function": intentional. These functions are the API surface, and each one enforces authorization internally.
-  - INFO "RLS enabled, no policy" on `app_private.rate_limits`: intentional deny-all.
+  - WARN "anon can execute SECURITY DEFINER function" on `public_document`: intentional (shared invoice/receipt links; 32-char random token, returns one document).
+  - INFO "RLS enabled, no policy" on `app_private.rate_limits` and `app_private.business_counters`: intentional deny-all.
   - WARN "leaked password protection disabled": an Auth dashboard setting; see outstanding issues.
 - ⏳ Owner actions in the Supabase dashboard:
   - Site URL / redirect URLs → `https://koopkita.vercel.app`
   - Custom SMTP
   - Re-enable admin MFA before onboarding real members (`admin_mfa_required` is currently **off** at the owner's request)
-  - Enter the official cooperative bank account in Tetapan
+  - Enter the official cooperative bank account and cooperative details (reg. no, address, logo) in Tetapan
 
 ## Change log
+- **2026-11-19: "Bisnes Saya" — member business invoices and receipts (migration 000012, applied; production fingerprint matches local).**
+  - Business profile: name, optional SSM (format-checked), phone, e-mail, address, bank, logo (public `business-logos` bucket), optional SST.
+  - Customers; invoices (draft → issue with `INV-YYYY-NNNN`, locked after issue, cancel with reason).
+  - Payments with OCR'd proof (private `business-proofs` bucket) → automatic receipts `RCP-YYYY-NNNN`; partial payments; reversal.
+  - Statuses: draft / issued / partially paid / paid / overdue / cancelled.
+  - PDFs generated on demand with `@react-pdf/renderer`; nothing is stored as a file.
+  - **Kongsi PDF** opens the device share sheet with the PDF attached, with a fallback (download / e-mail / WhatsApp / copy link) where the browser cannot share files. Also a WhatsApp button and revocable public links `/d/<token>`.
+  - Super Admin "Bisnes Ahli": SSM verification and per-member suspension; aggregates only, no customer or item data.
+  - Official cooperative receipt PDF for approved Qurban sales; cooperative details are set in Tetapan.
+  - Tests: unit + integration 94/94 (business suite + cooperative receipt), e2e 20/20 (full business flow incl. real PDF in the share sheet, desktop fallback, public link revoke, privacy, admin SSM, cooperative receipt).
 - **2026-11-17: cooperative finance + targeted notifications (migrations 000010–000011, applied).**
   - Admin-only **Kewangan Koperasi**: money in / out records per business, a mandatory reason, optional proof, and reversal-only corrections.
   - Total funds = share capital + verified Qurban payments − commission payouts + other money in − money out.

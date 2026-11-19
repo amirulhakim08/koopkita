@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { z } from "zod";
+import { ShareDocument } from "@/components/share-document";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
@@ -72,6 +73,15 @@ export default async function AdminSaleDetailPage({ params }: { params: Promise<
               </Card>
             )}
           </div>
+          {sale.status === "approved" && (
+            <Card>
+              <CardHeader><CardTitle>Resit Rasmi Koperasi</CardTitle></CardHeader>
+              <CardContent>
+                <ShareDocument pdfUrl={`/api/korban/resit/${sale.id}`} fileName={`Resit-Rasmi-${sale.sale_no}.pdf`} title={`Resit Rasmi ${sale.sale_no}`}
+                  phone={sale.buyers.phone} message={`Resit Rasmi koperasi bagi korban ${sale.sale_no} (${formatRM(sale.total_sen)}).`} />
+              </CardContent>
+            </Card>
+          )}
           {bundle.commission.length > 0 && (
             <Card>
               <CardHeader><CardTitle>Entri komisen</CardTitle></CardHeader>

@@ -4,14 +4,14 @@ import { usePathname } from "next/navigation";
 import * as React from "react";
 import { createPortal } from "react-dom";
 import {
-  Bell, Beef, Landmark, FileSpreadsheet, Home, LayoutDashboard, Megaphone, Menu, Coins, Receipt, Settings, ShieldCheck, User, Users, Wallet, X,
+  Bell, Beef, Landmark, Store, FileSpreadsheet, Home, LayoutDashboard, Megaphone, Menu, Coins, Receipt, Settings, ShieldCheck, User, Users, Wallet, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavItem } from "./nav-config";
 
 const ICONS = {
   home: Home, beef: Beef, coins: Coins, wallet: Wallet, bell: Bell, user: User, dashboard: LayoutDashboard,
-  users: Users, receipt: Receipt, file: FileSpreadsheet, megaphone: Megaphone, shield: ShieldCheck, settings: Settings, landmark: Landmark,
+  users: Users, receipt: Receipt, file: FileSpreadsheet, megaphone: Megaphone, shield: ShieldCheck, settings: Settings, landmark: Landmark, store: Store,
 } as const;
 
 function isActive(pathname: string, href: string, root: string) {
@@ -45,7 +45,12 @@ export function SidebarNav({ items, root }: { items: NavItem[]; root: string }) 
 
 export function BottomNav({ items, root }: { items: NavItem[]; root: string }) {
   const pathname = usePathname();
-  const mobile = items.filter((i) => i.mobile).slice(0, 5);
+  const mobile = items
+    .map((item, index) => ({ item, order: item.mobileOrder ?? index }))
+    .filter(({ item }) => item.mobile)
+    .sort((a, b) => a.order - b.order)
+    .map(({ item }) => item)
+    .slice(0, 5);
   return (
     <nav className="pb-safe fixed inset-x-0 bottom-0 z-30 border-t bg-white/95 backdrop-blur lg:hidden" aria-label="Navigasi utama">
       <ul className="mx-auto grid max-w-lg" style={{ gridTemplateColumns: `repeat(${mobile.length}, minmax(0, 1fr))` }}>
@@ -62,7 +67,7 @@ export function BottomNav({ items, root }: { items: NavItem[]; root: string }) {
                 <span className={cn("rounded-full px-4 py-1", active && "bg-secondary")}>
                   <Icon className="size-5" />
                 </span>
-                {item.label}
+                {item.mobileLabel ?? item.label}
               </Link>
             </li>
           );

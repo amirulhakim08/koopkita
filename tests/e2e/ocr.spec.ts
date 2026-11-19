@@ -7,6 +7,7 @@ test.describe("receipt OCR autofill (runs in the browser, self-hosted engine)", 
     test.setTimeout(120_000);
     await login(page, MEMBER2);
     await page.goto("/ahli/saham");
+    await page.waitForLoadState("networkidle"); // let the upload control hydrate before choosing a file
     await page.locator('input[type="file"]').first().setInputFiles(path.join(__dirname, "fixtures/resit-bank.png"));
     await expect(page.getByRole("status").filter({ hasText: "Sila semak sebelum hantar" })).toBeVisible({ timeout: 90_000 });
     await expect(page.getByLabel("Jumlah (RM)")).toHaveValue("150.00");
@@ -18,6 +19,7 @@ test.describe("receipt OCR autofill (runs in the browser, self-hosted engine)", 
     test.setTimeout(120_000);
     await login(page, ADMIN);
     await page.goto("/admin/kewangan");
+    await page.waitForLoadState("networkidle");
     await page.getByRole("tab", { name: "Wang masuk" }).click();
     await page.locator('input[type="file"]').first().setInputFiles(path.join(__dirname, "fixtures/resit-bank.pdf"));
     await expect(page.getByRole("status").filter({ hasText: "Sila semak sebelum hantar" })).toBeVisible({ timeout: 90_000 });

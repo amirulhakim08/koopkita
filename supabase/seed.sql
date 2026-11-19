@@ -42,6 +42,9 @@ declare
   v_campaign uuid;
   v_sale uuid;
   v_pay uuid;
+  v_biz uuid;
+  v_cust uuid;
+  v_inv uuid;
 begin
   v_admin := pg_temp.dev_user('admin@koopkita.test', 'DevAdmin#2026',
     '{"full_name":"Pentadbir Dev (CONTOH)","phone":"0120000000","ic_number":"800101020000","address":"Alamat Contoh, Alor Setar","state":"Kedah","postcode":"05000"}');
@@ -64,6 +67,9 @@ begin
   perform public.update_system_setting('coop_bank_name', '"BANK CONTOH (DEV)"');
   perform public.update_system_setting('coop_bank_account_name', '"KOPERASI CONTOH (DEV) — BUKAN AKAUN SEBENAR"');
   perform public.update_system_setting('coop_bank_account_no', '"0000000000"');
+  perform public.update_system_setting('coop_reg_no', '"K-CONTOH-0001 (DEV)"');
+  perform public.update_system_setting('coop_address', '"Alamat Contoh Koperasi, Alor Setar, Kedah (DEV)"');
+  perform public.update_system_setting('coop_phone', '"04-000 0000"');
 
   perform public.approve_member(v_m1, 'Data contoh pembangunan');
   perform public.approve_member(v_m2, 'Data contoh pembangunan');
@@ -88,6 +94,17 @@ begin
   perform public.review_share_payment(v_pay, true, 'Data contoh');
   perform public.review_sale_payment((select id from public.payment_submissions where sale_id = v_sale), true, 'Data contoh');
   perform public.approve_qurban_sale(v_sale, 'Data contoh');
+
+  -- member 1: a sample business with an issued, partly paid invoice (Bisnes Saya)
+  perform set_config('request.jwt.claims', json_build_object('sub', v_m1, 'role', 'authenticated', 'aal', 'aal1')::text, true);
+  perform set_config('request.jwt.claim.sub', v_m1::text, true);
+  v_biz := public.save_my_business('{"name":"Kedai Contoh Agro Enterprise (DEV)","ssm_no":"202403123456","phone":"0123456789","email":"kedai@contoh.test","address":"No 1, Jalan Contoh, Alor Setar","bank_name":"Maybank","bank_account_no":"512345678901","bank_account_holder":"Kedai Contoh Agro Enterprise"}');
+  insert into public.business_customers (business_id, name, phone, address) values (v_biz, 'Encik Ali Contoh', '0112233445', 'Jitra, Kedah') returning id into v_cust;
+  insert into public.business_customers (business_id, name, phone) values (v_biz, 'Kafe Contoh Sdn Bhd', '0198887777');
+  v_inv := public.save_invoice_draft(null, v_cust, current_date - 3, current_date + 11, 'Terima kasih atas sokongan anda.',
+    '[{"description":"Baja organik 25kg","quantity":4,"unit_price_sen":4500,"discount_sen":0},{"description":"Benih cili (pek)","quantity":10,"unit_price_sen":350,"discount_sen":0},{"description":"Penghantaran","quantity":1,"unit_price_sen":1500,"discount_sen":0}]');
+  perform public.issue_invoice(v_inv);
+  perform public.record_invoice_payment(v_inv, 10000, current_date - 1, 'duitnow', 'DEV-DN-0001', null, 'dev-biz-pay-1');
 
   -- member 2: a sale awaiting payment proof (reserved slots)
   perform set_config('request.jwt.claims', json_build_object('sub', v_m2, 'role', 'authenticated', 'aal', 'aal1')::text, true);

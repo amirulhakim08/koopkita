@@ -15,6 +15,7 @@ import { loadSale, ParticipantsTable, PaymentsList, SaleOverview } from "@/featu
 import { cancelSaleAction, submitSalePaymentAction } from "@/features/qurban/actions";
 import { formatRM, todayKL, senToDecimal } from "@/lib/format";
 import { z } from "zod";
+import { ShareDocument } from "@/components/share-document";
 
 export const metadata = { title: "Butiran Jualan" };
 
@@ -49,6 +50,16 @@ export default async function MemberSalePage({ params, searchParams }: { params:
           </div>
           {sale.status === "approved" && (
             <Alert tone="success" title="Jualan diluluskan">Komisen bagi jualan ini: <strong>{formatRM(commission)}</strong></Alert>
+          )}
+          {sale.status === "approved" && (
+            <Card>
+              <CardHeader><CardTitle>Resit Rasmi Koperasi</CardTitle><CardDescription>Hantar resit rasmi kepada pembeli.</CardDescription></CardHeader>
+              <CardContent>
+                <ShareDocument pdfUrl={`/api/korban/resit/${sale.id}`} fileName={`Resit-Rasmi-${sale.sale_no}.pdf`} title={`Resit Rasmi ${sale.sale_no}`}
+                  phone={sale.buyers.phone}
+                  message={`Terima kasih ${sale.buyers.full_name}. Berikut Resit Rasmi koperasi bagi korban ${sale.sale_no} (${sale.share_count} bahagian, ${formatRM(sale.total_sen)}).`} />
+              </CardContent>
+            </Card>
           )}
         </div>
         <div className="space-y-6">
