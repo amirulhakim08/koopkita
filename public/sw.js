@@ -5,9 +5,11 @@
  * and the offline fallback page are cached. Navigations go to the network and
  * fall back to /offline when the device is offline.
  */
-const CACHE = "koopkita-static-v1";
+const CACHE = "koopkita-static-v2";
 const OFFLINE_URL = "/offline";
-const PRECACHE = [OFFLINE_URL, "/icons/icon-192.png", "/icons/icon-512.png"];
+// /buka is the static start page (loading screen, no personal data): served from the cache at once.
+const START_URL = "/buka";
+const PRECACHE = [OFFLINE_URL, START_URL, "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
@@ -25,6 +27,16 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
+  if (req.mode === "navigate" && url.pathname === START_URL) {
+    // show the cached loading screen immediately; refresh the cached copy in the background
+    const update = fetch(req).then((res) => {
+      if (res.ok) caches.open(CACHE).then((c) => c.put(START_URL, res.clone()));
+      return res;
+    });
+    event.respondWith(caches.match(START_URL).then((hit) => hit || update).catch(() => caches.match(OFFLINE_URL)));
+    event.waitUntil(update.catch(() => {}));
+    return;
+  }
   if (req.mode === "navigate") {
     event.respondWith(fetch(req).catch(() => caches.match(OFFLINE_URL)));
     return;

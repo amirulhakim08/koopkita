@@ -7,7 +7,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // everything except static assets, PWA files and images
-    "/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.webmanifest|icons/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // everything except static assets, PWA files, images and the static start page /buka
+    "/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.webmanifest|icons/|buka$|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

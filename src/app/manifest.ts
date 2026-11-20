@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "KoopKITA — Koperasi KITA Agro",
     short_name: "KoopKITA",
     description: "Sistem pengurusan dalaman Koperasi Industri Tani Agro Pelancongan Kedah Berhad",
-    start_url: "/",
+    start_url: "/buka", // static loading screen, then the app
     scope: "/",
     display: "standalone",
     orientation: "portrait",
