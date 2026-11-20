@@ -262,17 +262,21 @@ describe("sharing, privacy and administration", () => {
 });
 
 describe("catalogue and Super Admin sales report", () => {
-  it("each member keeps a private catalogue; items are hidden, never deleted; names are unique", async () => {
+  it("each member keeps a private catalogue; only the owner can hide or delete items; names are unique", async () => {
     const [{ id }] = await asUser<{ id: string }>(pool, owner,
       `insert into public.business_catalog_items (business_id, name, price_sen) values ($1, 'Ikan 1kg', 2000) returning id`, [businessId]);
     await expect(asUser(pool, owner, `insert into public.business_catalog_items (business_id, name, price_sen) values ($1, ' ikan 1KG ', 2500)`, [businessId]))
       .rejects.toThrow(/duplicate key/);
     await asUser(pool, owner, `update public.business_catalog_items set price_sen = 2200, active = false where id = $1`, [id]);
     expect((await pool.query(`select price_sen, active from public.business_catalog_items where id = $1`, [id])).rows[0]).toEqual({ price_sen: "2200", active: false });
-    await expect(asUser(pool, owner, `delete from public.business_catalog_items where id = $1`, [id])).rejects.toThrow(/permission denied/);
-    await expect(pool.query(`delete from public.business_catalog_items where id = $1`, [id])).rejects.toThrow(/IMMUTABLE_RECORD/);
     expect(await asUser(pool, other, `select * from public.business_catalog_items`)).toHaveLength(0);
     expect(await asUser(pool, admin, `select * from public.business_catalog_items`)).toHaveLength(0);
+    // only the owner can delete an item (other members and admin delete nothing)
+    expect(await asUser(pool, other, `delete from public.business_catalog_items where id = $1 returning id`, [id])).toHaveLength(0);
+    expect(await asUser(pool, admin, `delete from public.business_catalog_items where id = $1 returning id`, [id])).toHaveLength(0);
+    await expect(asRole(pool, "anon", {}, `delete from public.business_catalog_items where id = $1`, [id])).rejects.toThrow(/permission denied/);
+    expect(await asUser(pool, owner, `delete from public.business_catalog_items where id = $1 returning id`, [id])).toHaveLength(1);
+    expect((await pool.query(`select count(*)::int n from public.business_catalog_items where id = $1`, [id])).rows[0].n).toBe(0);
     await expect(asUser(pool, other, `insert into public.business_catalog_items (business_id, name, price_sen) values ($1, 'Curi', 1)`, [businessId]))
       .rejects.toThrow(/row-level security/);
     await expect(asRole(pool, "anon", {}, `select * from public.business_catalog_items`)).rejects.toThrow(/permission denied/);

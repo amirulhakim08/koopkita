@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
 import { BusinessProfileForm, type BusinessRow } from "@/features/business/profile-form";
 import { CustomerForm, DeleteCustomerButton, type CustomerRow } from "@/features/business/customer-forms";
-import { CatalogActiveButton, CatalogItemForm, type CatalogItem } from "@/features/business/catalog-forms";
+import { CatalogActiveButton, CatalogDeleteButton, CatalogItemForm, type CatalogItem } from "@/features/business/catalog-forms";
 import { displayStatus } from "@/features/business/totals";
 import { requireActiveMember } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -129,24 +129,42 @@ export default async function BusinessPage({ searchParams }: { searchParams: Pro
             <CardContent>{business.suspended_at ? <p className="text-sm text-muted-foreground">Modul Bisnes digantung.</p> : <CatalogItemForm />}</CardContent>
           </Card>
           <div className="space-y-3 lg:col-span-3">
-            {catalog.length ? catalog.map((c) => (
-              <details key={c.id} className={cn("rounded-xl border bg-white", !c.active && "opacity-60")}>
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4">
-                  <span className="min-w-0">
-                    <span className="font-semibold">{c.name}</span>
-                    {!c.active && <Badge className="ml-2">Disembunyikan</Badge>}
-                    <span className="block text-sm tabular-nums text-muted-foreground">{formatRM(c.price_sen)}</span>
-                  </span>
-                  <span className="text-xs font-semibold text-primary">Ubah</span>
-                </summary>
-                {!business.suspended_at && (
-                  <div className="space-y-3 border-t p-4">
-                    <CatalogItemForm item={c} />
-                    <CatalogActiveButton id={c.id} active={c.active} />
-                  </div>
+            {catalog.length ? (
+              <>
+                {[["Dijual", catalog.filter((c) => c.active)], ["Disembunyikan", catalog.filter((c) => !c.active)]].map(([heading, list]) =>
+                  (list as CatalogItem[]).length ? (
+                    <section key={heading as string} className="space-y-2" aria-label={`Katalog ${heading as string}`}>
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {heading as string} ({(list as CatalogItem[]).length})
+                        {heading === "Disembunyikan" && <span className="ml-1 font-normal normal-case tracking-normal">— tidak dipaparkan semasa memilih item</span>}
+                      </h3>
+                      {(list as CatalogItem[]).map((c) => (
+                        <div key={c.id} className="rounded-xl border bg-white">
+                          <div className="flex flex-wrap items-center justify-between gap-2 p-4">
+                            <div className="min-w-0">
+                              <p className={cn("font-semibold", !c.active && "text-muted-foreground")}>{c.name}</p>
+                              <p className="text-sm tabular-nums text-muted-foreground">{formatRM(c.price_sen)}</p>
+                            </div>
+                            {!business.suspended_at && (
+                              <div className="flex flex-wrap items-center gap-1">
+                                <CatalogActiveButton id={c.id} active={c.active} name={c.name} />
+                                <CatalogDeleteButton id={c.id} name={c.name} />
+                              </div>
+                            )}
+                          </div>
+                          {!business.suspended_at && (
+                            <details className="border-t">
+                              <summary className="cursor-pointer list-none px-4 py-2 text-xs font-semibold text-primary">Ubah nama / harga</summary>
+                              <div className="px-4 pb-4"><CatalogItemForm item={c} /></div>
+                            </details>
+                          )}
+                        </div>
+                      ))}
+                    </section>
+                  ) : null,
                 )}
-              </details>
-            )) : <EmptyState icon={BookOpen} title="Katalog masih kosong" description="Senaraikan produk atau servis anda berserta harga biasa supaya mudah dipilih semasa membuat invois dan resit." />}
+              </>
+            ) : <EmptyState icon={BookOpen} title="Katalog masih kosong" description="Senaraikan produk atau servis anda berserta harga biasa supaya mudah dipilih semasa membuat invois dan resit." />}
           </div>
         </div>
       )}

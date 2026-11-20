@@ -124,6 +124,16 @@ export async function setCatalogActiveAction(_prev: ActionState, formData: FormD
   return { ok: true, message: active ? "Item dipaparkan semula." : "Item disembunyikan daripada pilihan." };
 }
 
+export async function deleteCatalogItemAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const id = uuid.safeParse(formData.get("id"));
+  if (!id.success) return fail("Permintaan tidak sah.");
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("business_catalog_items").delete().eq("id", id.data).select("id");
+  if (error || !data?.length) return fail("Item katalog tidak dapat dipadam.");
+  revalidatePath("/ahli/bisnes", "layout");
+  return { ok: true, message: "Item dipadam daripada katalog. Invois dan resit lama tidak terjejas." };
+}
+
 // ---------------------------------------------------------------- invoices
 const itemSchema = z.object({
   description: z.preprocess(trim, z.string().min(1, "Perkara diperlukan").max(300)),

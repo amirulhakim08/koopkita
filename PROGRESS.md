@@ -71,7 +71,7 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
 
 ## Phase 7 — Deployment ✅ (live, iterating)
 - ✅ Supabase project **mydevelopment** (`pikifjnwjpzoeqhorvpe`, ap-southeast-1 Singapore), used for KoopKITA only.
-- ✅ Migrations 000001–000015 applied (schema only, **no seed data**). After each one, the full schema fingerprint (functions, columns, constraints, policies, triggers, grants) matched the tested local stack.
+- ✅ Migrations 000001–000016 applied (schema only, **no seed data**). After each one, the full schema fingerprint (functions, columns, constraints, policies, triggers, grants) matched the tested local stack.
 - ✅ Private buckets `receipts`, `payout-proofs`, `business-proofs`; public `business-logos`; pg_cron job `koopkita-expire-reservations` (every 15 min).
 - ✅ Vercel project `koopkita` deployed from `main` at https://koopkita.vercel.app with the 3 public env vars.
 - ✅ First Super Admin provisioned (KITA-0001).
@@ -87,6 +87,11 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
   - Enter the official cooperative bank account and cooperative details (reg. no, address, logo) in Tetapan
 
 ## Change log
+- **2026-11-20: catalogue hide / show / delete (migration 000016, applied; production fingerprint matches local).**
+  - Each catalogue item shows its buttons directly. Hidden items have their own "Disembunyikan" section with a clear "Paparkan semula" button; before this, the button was tucked inside "Ubah" on a faded card.
+  - Members can delete items they no longer sell, after a confirmation. Catalogue rows are only templates, so issued invoices and receipts are unaffected. Only the owner can delete.
+  - Fixed a date test that failed between midnight and 8am Malaysian time.
+  - Tests: unit 36/36, integration 68/68, e2e 22/22.
 - **2026-11-19: daily document numbers (migration 000015, applied; production fingerprint matches local).**
   - New invoices and receipts are numbered `INV-YYMMDDNNN` and `RCP-YYMMDDNNN`, e.g. `INV-260125001` for the first invoice dated 25 January 2026.
   - The sequence restarts daily, separately per business and per kind. Invoices use the invoice date; receipts use the payment or sale date.
