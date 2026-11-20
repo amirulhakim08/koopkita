@@ -288,3 +288,68 @@ test("catalogue: hide an item, show it again, and delete one with confirmation",
   await page.getByRole("link", { name: /^INV-/ }).first().click();
   await expect(page.getByRole("cell", { name: "Benih cili (pek)" })).toBeVisible();
 });
+
+test("sebut harga: draft with scope and terms → send → share PDF → customer link → accept → invoice → deposit", async ({ page, browser }) => {
+  test.setTimeout(120_000);
+  await page.addInitScript(() => {
+    const w = window as unknown as { __shared: unknown[] };
+    w.__shared = [];
+    Object.defineProperty(navigator, "canShare", { configurable: true, value: (d: ShareData) => !!d.files?.length });
+    Object.defineProperty(navigator, "share", { configurable: true, value: async (d: ShareData) => { w.__shared.push({ name: d.files![0].name, text: d.text }); } });
+  });
+  const shared = () => page.evaluate(() => (window as unknown as { __shared: { name: string; text: string }[] }).__shared);
+  await login(page, { email: "ahli1@koopkita.test", password: "DevAhli#2026" });
+
+  await page.goto("/ahli/bisnes");
+  await page.getByRole("link", { name: "Sebut Harga", exact: true }).first().click();
+  await expect(page).toHaveURL(/sebut-harga\/baharu/);
+  await page.getByPlaceholder("Cari nama atau no. telefon").fill("Ali");
+  await page.getByRole("option", { name: /Encik Ali Contoh/ }).click();
+  await page.getByRole("button", { name: "60 hari" }).click();
+  await page.getByLabel("Terangkan kerja yang akan dibuat (pilihan)").fill("Membina bangsal simpanan baja 10x12 kaki");
+  await expect(page.getByLabel("Terma (pilihan)")).toHaveValue(/Deposit 30%/); // from the business profile
+  await page.getByLabel("Perkara 1").fill("Kerja membina bangsal (lot)");
+  await page.locator('input[name="items.0.unit_price"]').fill("4500");
+  await page.getByRole("button", { name: "Keluarkan" }).click();
+  await expect(page.getByText("Sebut harga dikeluarkan").first()).toBeVisible();
+  const quoteNo = (await page.getByRole("heading", { level: 1 }).textContent())!.trim();
+  expect(quoteNo).toMatch(/^QT-\d{9}$/); // YYMMDD + daily sequence
+  await expect(page.getByText("Membina bangsal simpanan baja 10x12 kaki")).toBeVisible();
+  const quoteUrl = page.url().split("?")[0];
+
+  // share the PDF; the customer opens the link
+  await page.getByRole("button", { name: "Kongsi PDF" }).click();
+  await expect.poll(async () => (await shared()).length).toBe(1);
+  expect((await shared())[0].name).toBe(`SebutHarga-${quoteNo}.pdf`);
+  const wa = await page.getByRole("link", { name: "WhatsApp" }).first().getAttribute("href");
+  const publicUrl = decodeURIComponent(wa!).match(/https?:\/\/[^\s]+\/d\/[A-Za-z0-9_-]{32}/)![0];
+  const anon = await browser.newContext();
+  const cust = await anon.newPage();
+  await cust.goto(publicUrl);
+  await expect(cust.getByText("SEBUT HARGA", { exact: true })).toBeVisible();
+  await expect(cust.getByText("Membina bangsal simpanan baja 10x12 kaki")).toBeVisible();
+  await expect(cust.getByText(/Deposit 30%/)).toBeVisible();
+  const pdf = await cust.request.get(`${publicUrl}/pdf`);
+  expect(pdf.headers()["content-type"]).toBe("application/pdf");
+  await anon.close();
+
+  // customer agrees → invoice draft with the same items, scope and terms
+  await page.getByRole("button", { name: /Pelanggan setuju/ }).click();
+  await expect(page.getByText("Invois dicipta daripada sebut harga")).toBeVisible();
+  await expect(page.getByText("Membina bangsal simpanan baja 10x12 kaki").first()).toBeVisible();
+  await expect(page.getByLabel("Perkara 1")).toHaveValue("Kerja membina bangsal (lot)");
+  await page.getByRole("button", { name: "Keluarkan" }).click();
+  await expect(page.getByText("Invois dikeluarkan").first()).toBeVisible();
+  // a 30% deposit is a partial payment with its own receipt
+  await page.getByLabel("Jumlah diterima (RM)").fill("1350");
+  await page.getByRole("button", { name: "Rekod bayaran & jana resit" }).click();
+  await expect(page.getByText("Bayaran direkodkan dan resit dijana.")).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("Dibayar Separa").first()).toBeVisible();
+
+  // the quotation now shows the invoice; the list shows the status
+  await page.goto(quoteUrl);
+  await expect(page.getByText("Sudah ditukar ke invois")).toBeVisible();
+  await page.goto("/ahli/bisnes?tab=sebut-harga");
+  await expect(page.getByRole("row").filter({ hasText: quoteNo }).getByText("Ditukar ke invois")).toBeVisible();
+});

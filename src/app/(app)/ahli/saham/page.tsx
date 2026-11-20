@@ -44,7 +44,7 @@ export default async function SharesPage() {
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-5">
-        <Card className="lg:col-span-2">
+        <Card className="min-w-0 lg:col-span-2">
           <CardHeader>
             <CardTitle>Hantar bayaran syer</CardTitle>
             <CardDescription>Bayar ke akaun koperasi, kemudian muat naik resit. Minimum {formatRM(minPayment)}.</CardDescription>
@@ -68,7 +68,7 @@ export default async function SharesPage() {
           </CardContent>
         </Card>
 
-        <div className="space-y-3 lg:col-span-3">
+        <div className="min-w-0 space-y-3 lg:col-span-3">
           <h2 className="font-semibold">Sejarah transaksi</h2>
           {txns?.length ? (
             <Table>

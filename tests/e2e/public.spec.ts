@@ -41,3 +41,22 @@ test.describe("public surface & PWA", () => {
     await expect(page.getByText("No. Kad Pengenalan mesti 12 digit")).toBeVisible();
   });
 });
+
+test.describe("app start", () => {
+  test("the installed app opens on a static loading screen, then continues to the app", async ({ page, request }) => {
+    const manifest = await (await request.get("/manifest.webmanifest")).json();
+    expect(manifest.start_url).toBe("/buka");
+    const res = await request.get("/buka", { maxRedirects: 0 });
+    expect(res.status()).toBe(200); // served without a session check or redirect
+    expect(await res.text()).toContain("Memuatkan");
+    await page.goto("/buka");
+    await page.waitForURL(/\/log-masuk/); // signed out: the start page sends the visitor to sign in
+    await expect(page.getByRole("button", { name: "Log Masuk" })).toBeVisible();
+  });
+
+  test("the service worker keeps the loading screen for an instant start", async ({ request }) => {
+    const sw = await (await request.get("/sw.js")).text();
+    expect(sw).toContain('const START_URL = "/buka"');
+    expect(sw).toMatch(/PRECACHE = \[OFFLINE_URL, START_URL/);
+  });
+});

@@ -5,9 +5,10 @@ export type BusinessSnapshot = {
 };
 
 export type DocumentJson = {
-  kind: "invoice" | "receipt";
+  kind: "invoice" | "receipt" | "quote";
   invoice: {
     id: string; invoice_no: string | null; status: string; issue_date: string; due_date: string; is_direct?: boolean;
+    scope?: string | null; terms?: string | null;
     subtotal_sen: number; discount_sen: number; tax_rate_bp: number; tax_sen: number; total_sen: number; paid_sen: number;
     notes: string | null; cancel_reason: string | null; cancelled_at: string | null; share_token: string | null; overdue: boolean;
     customer: { name: string; phone: string | null; email: string | null; address: string | null };

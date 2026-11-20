@@ -310,3 +310,87 @@ describe("catalogue and Super Admin sales report", () => {
     await expect(asUser(pool, seller, `select * from public.admin_business_report(null, null)`)).rejects.toThrow(/FORBIDDEN/);
   });
 });
+
+describe("quotations (sebut harga)", () => {
+  const quoteItems = [
+    { description: "Kerja mengecat dinding (meter persegi)", quantity: 420, unit_price_sen: 1800, discount_sen: 0 },
+    { description: "Baiki dinding retak (lot)", quantity: 1, unit_price_sen: 165000, discount_sen: 0 },
+  ];
+  const quoteDraft = (uid: string, id: string | null = null) =>
+    asUser<{ id: string }>(pool, uid,
+      `select public.save_quote_draft($1, $2, current_date, current_date + 30, 'Mengecat 6 bilik darjah', 'Deposit 30% sebelum kerja', $3) as id`,
+      [id, customerId, JSON.stringify(quoteItems)]).then((r) => r[0].id);
+  const quote = async (id: string) => (await pool.query(`select * from public.business_quotes where id = $1`, [id])).rows[0];
+
+  it("drafts, sends with a QT number and freezes the quotation", async () => {
+    const id = await quoteDraft(owner);
+    let q = await quote(id);
+    expect([q.status, Number(q.total_sen), q.quote_no]).toEqual(["draft", 921000, null]);
+    const [{ no }] = await asUser<{ no: string }>(pool, owner, `select public.send_quote($1) as no`, [id]);
+    expect(no).toMatch(/^QT-\d{6}001$/);
+    q = await quote(id);
+    expect([q.status, q.scope, q.terms]).toEqual(["sent", "Mengecat 6 bilik darjah", "Deposit 30% sebelum kerja"]);
+    await expect(quoteDraft(owner, id)).rejects.toThrow(/Hanya draf/);
+    await expect(pool.query(`update public.business_quotes set total_sen = 1 where id = $1`, [id])).rejects.toThrow(/IMMUTABLE_RECORD/);
+    await expect(pool.query(`update public.business_quote_items set unit_price_sen = 1 where quote_id = $1`, [id])).rejects.toThrow(/IMMUTABLE_RECORD/);
+    await expect(pool.query(`delete from public.business_quotes where id = $1`, [id])).rejects.toThrow(/IMMUTABLE_RECORD/);
+    // the customer link shows the quotation with its scope and terms
+    const [{ d }] = await asRole<{ d: { kind: string; invoice: { invoice_no: string; scope: string; items: unknown[] } } }>(
+      pool, "anon", {}, `select public.public_document($1) as d`, [q.share_token]);
+    expect([d.kind, d.invoice.invoice_no, d.invoice.scope, d.invoice.items.length]).toEqual(["quote", no, "Mengecat 6 bilik darjah", 2]);
+  });
+
+  it("records the answer, converts to an invoice draft once, and frees it again if that draft is deleted", async () => {
+    const id = await quoteDraft(owner);
+    await expect(asUser(pool, owner, `select public.convert_quote_to_invoice($1)`, [id])).rejects.toThrow(/dihantar atau diterima/);
+    await asUser(pool, owner, `select public.send_quote($1)`, [id]);
+    await asUser(pool, owner, `select public.set_quote_status($1, 'rejected')`, [id]);
+    await asUser(pool, owner, `select public.set_quote_status($1, 'accepted')`, [id]);
+    const [{ inv }] = await asUser<{ inv: string }>(pool, owner, `select public.convert_quote_to_invoice($1) as inv`, [id]);
+    const [{ inv: again }] = await asUser<{ inv: string }>(pool, owner, `select public.convert_quote_to_invoice($1) as inv`, [id]);
+    expect(again).toBe(inv);
+    const i = await invoice(inv);
+    expect([i.status, Number(i.total_sen), i.scope, i.terms, i.quote_id]).toEqual(["draft", 921000, "Mengecat 6 bilik darjah", "Deposit 30% sebelum kerja", id]);
+    expect((await pool.query(`select count(*)::int n from public.business_invoice_items where invoice_id = $1`, [inv])).rows[0].n).toBe(2);
+    expect([(await quote(id)).status, (await quote(id)).converted_invoice_id]).toEqual(["converted", inv]);
+    await expect(asUser(pool, owner, `select public.set_quote_status($1, 'rejected')`, [id])).rejects.toThrow(/tidak boleh diubah/);
+    // deleting the invoice draft puts the quotation back to accepted
+    await asUser(pool, owner, `select public.delete_invoice_draft($1)`, [inv]);
+    expect([(await quote(id)).status, (await quote(id)).converted_invoice_id]).toEqual(["accepted", null]);
+    // converted again and issued: scope and terms are frozen with the invoice; a deposit is a partial payment
+    const [{ inv: inv2 }] = await asUser<{ inv: string }>(pool, owner, `select public.convert_quote_to_invoice($1) as inv`, [id]);
+    await asUser(pool, owner, `select public.issue_invoice($1)`, [inv2]);
+    await expect(pool.query(`update public.business_invoices set terms = 'lain' where id = $1`, [inv2])).rejects.toThrow(/IMMUTABLE_RECORD/);
+    await asUser(pool, owner, `select public.record_invoice_payment($1, 276300, current_date, 'bank_transfer', 'DEPOSIT', null, null)`, [inv2]);
+    expect((await invoice(inv2)).status).toBe("partially_paid");
+    const [{ d }] = await asUser<{ d: { invoice: { scope: string; terms: string } } }>(pool, owner, `select public.my_business_document('invoice', $1) as d`, [inv2]);
+    expect([d.invoice.scope, d.invoice.terms]).toEqual(["Mengecat 6 bilik darjah", "Deposit 30% sebelum kerja"]);
+  });
+
+  it("copies a quotation as a new draft; quotations are private and not counted as sales", async () => {
+    const id = await quoteDraft(owner);
+    await asUser(pool, owner, `select public.send_quote($1)`, [id]);
+    const [{ copy }] = await asUser<{ copy: string }>(pool, owner, `select public.duplicate_quote($1) as copy`, [id]);
+    const c = await quote(copy);
+    expect([c.status, c.quote_no, Number(c.total_sen), c.scope]).toEqual(["draft", null, 921000, "Mengecat 6 bilik darjah"]);
+    await asUser(pool, owner, `select public.delete_quote_draft($1)`, [copy]);
+    expect(await quote(copy)).toBeUndefined();
+    for (const t of ["business_quotes", "business_quote_items"]) {
+      expect(await asUser(pool, other, `select * from public.${t}`), t).toHaveLength(0);
+      expect(await asUser(pool, admin, `select * from public.${t}`), t).toHaveLength(0);
+    }
+    await expect(asUser(pool, other, `select public.my_business_document('quote', $1)`, [id])).rejects.toThrow(/NOT_FOUND/);
+    await expect(asUser(pool, other, `select public.send_quote($1)`, [id])).rejects.toThrow();
+    // sales report: quotations add nothing until they become invoices
+    const before = await asUser<{ total_sales_sen: string }>(pool, admin, `select total_sales_sen from public.admin_business_report(null, null) where business_id = $1`, [businessId]);
+    const id2 = await quoteDraft(owner);
+    await asUser(pool, owner, `select public.send_quote($1)`, [id2]);
+    const after = await asUser<{ total_sales_sen: string }>(pool, admin, `select total_sales_sen from public.admin_business_report(null, null) where business_id = $1`, [businessId]);
+    expect(after[0].total_sales_sen).toBe(before[0].total_sales_sen);
+  });
+
+  it("keeps default terms on the business profile", async () => {
+    await asUser(pool, owner, `select public.save_my_business($1)`, [{ ...profile, default_terms: "Deposit 30%. Baki selepas siap." }]);
+    expect((await pool.query(`select default_terms from public.business_profiles where id = $1`, [businessId])).rows[0].default_terms).toBe("Deposit 30%. Baki selepas siap.");
+  });
+});

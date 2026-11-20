@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export async function GET(request: NextRequest) {
   const kind = request.nextUrl.searchParams.get("jenis");
   const id = request.nextUrl.searchParams.get("id") ?? "";
-  if ((kind !== "invoice" && kind !== "receipt") || !/^[0-9a-f-]{36}$/.test(id)) return new NextResponse("Permintaan tidak sah", { status: 400 });
+  if ((kind !== "invoice" && kind !== "receipt" && kind !== "quote") || !/^[0-9a-f-]{36}$/.test(id)) return new NextResponse("Permintaan tidak sah", { status: 400 });
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("my_business_document", { p_kind: kind, p_id: id });
   if (error || !data) return new NextResponse("Dokumen tidak dijumpai", { status: 404 });

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, BookOpen, CircleDollarSign, Clock, FileText, Plus, Receipt, Store, Users } from "lucide-react";
+import { AlertTriangle, BookOpen, CircleDollarSign, Clock, FilePen, FileText, Plus, Receipt, Store, Users } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,11 +11,11 @@ import { EmptyState } from "@/components/empty-state";
 import { BusinessProfileForm, type BusinessRow } from "@/features/business/profile-form";
 import { CustomerForm, DeleteCustomerButton, type CustomerRow } from "@/features/business/customer-forms";
 import { CatalogActiveButton, CatalogDeleteButton, CatalogItemForm, type CatalogItem } from "@/features/business/catalog-forms";
-import { displayStatus } from "@/features/business/totals";
+import { displayQuoteStatus, displayStatus } from "@/features/business/totals";
 import { requireActiveMember } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatRM, todayKL } from "@/lib/format";
-import { INVOICE_STATUS, PAYMENT_METHODS } from "@/lib/labels";
+import { INVOICE_STATUS, PAYMENT_METHODS, QUOTE_STATUS } from "@/lib/labels";
 import { logoUrl } from "@/lib/storage-url";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +23,7 @@ export const metadata = { title: "Bisnes Saya" };
 
 const TABS = [
   ["invois", "Invois", FileText],
+  ["sebut-harga", "Sebut Harga", FilePen],
   ["resit", "Resit", Receipt],
   ["katalog", "Katalog", BookOpen],
   ["pelanggan", "Pelanggan", Users],
@@ -41,14 +42,18 @@ export default async function BusinessPage({ searchParams }: { searchParams: Pro
   const tab = (TABS.some(([k]) => k === sp.tab) ? sp.tab : business ? "invois" : "profil") as (typeof TABS)[number][0];
   const today = todayKL();
 
-  const [{ data: invoices }, { data: payments }, { data: customers }, { data: catalogData }] = business
+  const [{ data: invoices }, { data: payments }, { data: customers }, { data: catalogData }, { data: quoteData }] = business
     ? await Promise.all([
         supabase.from("business_invoices").select("id, invoice_no, status, issue_date, due_date, total_sen, paid_sen, business_customers(name)").eq("business_id", business.id).eq("is_direct", false).order("created_at", { ascending: false }).limit(500),
         supabase.from("business_payments").select("id, receipt_no, amount_sen, paid_on, method, reversed_at, invoice_id, business_invoices(invoice_no, is_direct, customer_snapshot)").eq("business_id", business.id).order("created_at", { ascending: false }).limit(500),
         supabase.from("business_customers").select("id, name, phone, email, address").eq("business_id", business.id).order("name"),
         supabase.from("business_catalog_items").select("id, name, price_sen, active").eq("business_id", business.id).order("active", { ascending: false }).order("name"),
+        supabase.from("business_quotes").select("id, quote_no, status, issue_date, valid_until, total_sen, customer_snapshot, business_customers(name)").eq("business_id", business.id).order("created_at", { ascending: false }).limit(500),
       ])
-    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
+    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }];
+  const quotes = (quoteData ?? []) as unknown as { id: string; quote_no: string | null; status: string; issue_date: string; valid_until: string; total_sen: number; business_customers: { name: string } | null }[];
+  const quoteFilter = sp.status && sp.status in QUOTE_STATUS ? sp.status : undefined;
+  const shownQuotes = quotes.filter((q) => !quoteFilter || displayQuoteStatus(q.status, q.valid_until, today) === quoteFilter);
   const catalog = (catalogData ?? []) as CatalogItem[];
 
   const inv = (invoices ?? []) as unknown as InvoiceRow[];
@@ -78,7 +83,8 @@ export default async function BusinessPage({ searchParams }: { searchParams: Pro
         actions={business && !business.suspended_at ? (
           <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
             <Button asChild size="lg" variant="outline"><Link href="/ahli/bisnes/resit/baharu"><Receipt /> Resit Baharu</Link></Button>
-            <Button asChild size="lg"><Link href="/ahli/bisnes/invois/baharu"><Plus /> Invois Baharu</Link></Button>
+            <Button asChild size="lg" variant="outline"><Link href="/ahli/bisnes/sebut-harga/baharu"><FilePen /> Sebut Harga</Link></Button>
+            <Button asChild size="lg" className="col-span-2"><Link href="/ahli/bisnes/invois/baharu"><Plus /> Invois Baharu</Link></Button>
           </div>
         ) : undefined}
       />
@@ -220,6 +226,34 @@ export default async function BusinessPage({ searchParams }: { searchParams: Pro
             </Table>
           ) : <EmptyState icon={FileText} title="Tiada invois" description="Invois yang anda buat akan dipaparkan di sini."
               action={!business.suspended_at ? <Button asChild><Link href="/ahli/bisnes/invois/baharu"><Plus /> Invois Baharu</Link></Button> : undefined} />}
+        </div>
+      )}
+
+      {tab === "sebut-harga" && business && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2 text-sm">
+            {[["", "Semua"], ["draft", "Draf"], ["sent", "Dihantar"], ["accepted", "Diterima"], ["converted", "Ditukar"], ["expired", "Tamat tempoh"], ["rejected", "Ditolak"]].map(([v, l]) => (
+              <Link key={v} href={`/ahli/bisnes?tab=sebut-harga${v ? `&status=${v}` : ""}`}
+                className={cn("rounded-full border px-3 py-1", (quoteFilter ?? "") === v ? "border-primary bg-primary text-primary-foreground" : "bg-white hover:bg-muted")}>{l}</Link>
+            ))}
+          </div>
+          {shownQuotes.length ? (
+            <Table>
+              <THead><TR><TH>No.</TH><TH>Pelanggan</TH><TH>Sah sehingga</TH><TH className="text-right">Jumlah</TH><TH>Status</TH></TR></THead>
+              <TBody>
+                {shownQuotes.map((q) => (
+                  <TR key={q.id}>
+                    <TD className="whitespace-nowrap"><Link href={`/ahli/bisnes/sebut-harga/${q.id}`} className="font-mono text-xs font-medium text-primary hover:underline">{q.quote_no ?? "Draf"}</Link></TD>
+                    <TD>{q.business_customers?.name}</TD>
+                    <TD className="whitespace-nowrap text-xs">{formatDate(q.valid_until)}</TD>
+                    <TD className="whitespace-nowrap text-right font-semibold tabular-nums">{formatRM(q.total_sen)}</TD>
+                    <TD><StatusBadge map={QUOTE_STATUS} value={displayQuoteStatus(q.status, q.valid_until, today)} /></TD>
+                  </TR>
+                ))}
+              </TBody>
+            </Table>
+          ) : <EmptyState icon={FilePen} title="Tiada sebut harga" description="Untuk servis dan projek: beri harga dahulu, kemudian tukar ke invois bila pelanggan setuju."
+              action={!business.suspended_at ? <Button asChild><Link href="/ahli/bisnes/sebut-harga/baharu"><Plus /> Sebut Harga Baharu</Link></Button> : undefined} />}
         </div>
       )}
 

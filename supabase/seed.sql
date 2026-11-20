@@ -45,6 +45,7 @@ declare
   v_biz uuid;
   v_cust uuid;
   v_inv uuid;
+  v_quote uuid;
 begin
   v_admin := pg_temp.dev_user('admin@koopkita.test', 'DevAdmin#2026',
     '{"full_name":"Pentadbir Dev (CONTOH)","phone":"0120000000","ic_number":"800101020000","address":"Alamat Contoh, Alor Setar","state":"Kedah","postcode":"05000"}');
@@ -98,7 +99,7 @@ begin
   -- member 1: a sample business with an issued, partly paid invoice (Bisnes Saya)
   perform set_config('request.jwt.claims', json_build_object('sub', v_m1, 'role', 'authenticated', 'aal', 'aal1')::text, true);
   perform set_config('request.jwt.claim.sub', v_m1::text, true);
-  v_biz := public.save_my_business('{"name":"Kedai Contoh Agro Enterprise (DEV)","ssm_no":"202403123456","phone":"0123456789","email":"kedai@contoh.test","address":"No 1, Jalan Contoh, Alor Setar","bank_name":"Maybank","bank_account_no":"512345678901","bank_account_holder":"Kedai Contoh Agro Enterprise"}');
+  v_biz := public.save_my_business('{"name":"Kedai Contoh Agro Enterprise (DEV)","ssm_no":"202403123456","phone":"0123456789","email":"kedai@contoh.test","address":"No 1, Jalan Contoh, Alor Setar","bank_name":"Maybank","bank_account_no":"512345678901","bank_account_holder":"Kedai Contoh Agro Enterprise","default_terms":"Deposit 30% sebelum kerja dimulakan. Baki dibayar selepas kerja siap."}');
   insert into public.business_customers (business_id, name, phone, address) values (v_biz, 'Encik Ali Contoh', '0112233445', 'Jitra, Kedah') returning id into v_cust;
   insert into public.business_customers (business_id, name, phone) values (v_biz, 'Kafe Contoh Sdn Bhd', '0198887777');
   insert into public.business_catalog_items (business_id, name, price_sen) values
@@ -110,6 +111,11 @@ begin
   -- a direct-sale receipt (no invoice) for a walk-in customer
   perform public.create_direct_receipt(null, current_date, 'cash', null, null, null,
     '[{"description":"Cili padi segar (kg)","quantity":2,"unit_price_sen":1200,"discount_sen":0}]', 'dev-biz-direct-1');
+  -- a sent quotation (sebut harga) for a service job
+  v_quote := public.save_quote_draft(null, v_cust, current_date, current_date + 30,
+    'Pasang sistem pengairan titis untuk 2 ekar kebun cili (CONTOH)', 'Deposit 30% sebelum kerja dimulakan. Baki dibayar selepas kerja siap.',
+    '[{"description":"Paip dan penitis (set seekar)","quantity":2,"unit_price_sen":180000,"discount_sen":0},{"description":"Upah pemasangan (hari)","quantity":3,"unit_price_sen":35000,"discount_sen":0}]');
+  perform public.send_quote(v_quote);
 
   -- member 2: a sale awaiting payment proof (reserved slots)
   perform set_config('request.jwt.claims', json_build_object('sub', v_m2, 'role', 'authenticated', 'aal', 'aal1')::text, true);

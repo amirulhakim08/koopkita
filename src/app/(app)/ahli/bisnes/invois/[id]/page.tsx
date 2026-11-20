@@ -25,14 +25,15 @@ type Inv = {
   subtotal_sen: number; discount_sen: number; tax_rate_bp: number; tax_sen: number; total_sen: number; paid_sen: number;
   notes: string | null; share_token: string | null; share_enabled: boolean; cancel_reason: string | null;
   customer_snapshot: { name: string; phone: string | null } | null; is_direct: boolean;
+  scope: string | null; terms: string | null; quote_id: string | null;
 };
 type Item = { description: string; quantity: number; unit_price_sen: number; discount_sen: number; line_total_sen: number };
 type Pay = { id: string; receipt_no: string; amount_sen: number; paid_on: string; method: string; reference: string | null; share_token: string; share_enabled: boolean; reversed_at: string | null; reverse_reason: string | null };
 
-export default async function InvoicePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ dikeluarkan?: string }> }) {
+export default async function InvoicePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ dikeluarkan?: string; daripada?: string }> }) {
   const { userId } = await requireActiveMember();
   const { id } = await params;
-  const { dikeluarkan } = await searchParams;
+  const { dikeluarkan, daripada } = await searchParams;
   if (!z.string().uuid().safeParse(id).success) notFound();
   const supabase = await createClient();
   const { data } = await supabase.from("business_invoices").select("*").eq("id", id).maybeSingle();
@@ -68,6 +69,17 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
       <>
         <Link href="/ahli/bisnes" className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"><ArrowLeft className="size-4" /> Bisnes Saya</Link>
         <PageHeader title="Draf invois" description={<StatusBadge map={INVOICE_STATUS} value="draft" />} actions={<DeleteDraftForm invoiceId={inv.id} />} />
+        {daripada === "sebut-harga" && (
+          <Alert tone="success" title="Invois dicipta daripada sebut harga" className="mb-6">
+            Item, skop kerja dan terma sudah disalin. Semak tarikh akhir bayaran, kemudian tekan <strong>Keluarkan</strong>.
+          </Alert>
+        )}
+        {(inv.scope || inv.terms) && (
+          <div className="mb-6 grid gap-3 sm:grid-cols-2">
+            {inv.scope && <div className="rounded-xl border bg-white p-3 text-sm"><p className="text-xs uppercase tracking-wide text-muted-foreground">Skop kerja</p><p className="whitespace-pre-line">{inv.scope}</p></div>}
+            {inv.terms && <div className="rounded-xl border bg-white p-3 text-sm"><p className="text-xs uppercase tracking-wide text-muted-foreground">Terma &amp; syarat</p><p className="whitespace-pre-line">{inv.terms}</p></div>}
+          </div>
+        )}
         {suspended ? <Alert tone="danger">Modul Bisnes anda digantung.</Alert> : (
           <InvoiceEditor customers={(customers ?? []) as CustomerRow[]} catalog={(catalog ?? []) as CatalogOption[]} taxRateBp={business?.sst_enabled ? business.sst_rate_bp : 0}
             draft={{ id: inv.id, customer_id: inv.customer_id, issue_date: inv.issue_date, due_date: inv.due_date, notes: inv.notes, items: its }} />
@@ -124,6 +136,9 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                 <div className="flex justify-between"><dt className="text-muted-foreground">Dibayar</dt><dd>{formatRM(inv.paid_sen)}</dd></div>
                 <div className="flex justify-between font-semibold"><dt>Baki</dt><dd>{formatRM(Math.max(0, balance))}</dd></div>
               </dl>
+              {inv.scope && <div className="rounded-lg border p-3 text-sm"><p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">Skop kerja</p><p className="whitespace-pre-line">{inv.scope}</p></div>}
+              {inv.terms && <div className="rounded-lg bg-muted p-3 text-sm"><p className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">Terma &amp; syarat</p><p className="whitespace-pre-line">{inv.terms}</p></div>}
+              {inv.quote_id && <p className="text-xs text-muted-foreground">Daripada sebut harga: <Link href={`/ahli/bisnes/sebut-harga/${inv.quote_id}`} className="font-semibold text-primary hover:underline">lihat sebut harga</Link></p>}
               {inv.notes && <p className="rounded-lg bg-muted p-3 text-sm">{inv.notes}</p>}
               {inv.status === "cancelled" && <Alert tone="danger" title="Invois dibatalkan">{inv.cancel_reason}</Alert>}
             </CardContent>
