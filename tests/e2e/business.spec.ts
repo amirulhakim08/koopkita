@@ -256,3 +256,35 @@ test("catalogue: tick several items, confirm their prices once, and they fill Pe
   await page.locator('input[name="items.0.quantity"]').fill("5");
   await expect(page.getByText("RM 100.00").last()).toBeVisible(); // 5 x 18 + 10
 });
+
+test("catalogue: hide an item, show it again, and delete one with confirmation", async ({ page }) => {
+  await login(page, { email: "ahli1@koopkita.test", password: "DevAhli#2026" });
+  await page.goto("/ahli/bisnes?tab=katalog");
+  const sold = page.getByRole("region", { name: "Katalog Dijual" });
+  const hidden = page.getByRole("region", { name: "Katalog Disembunyikan" });
+  await sold.getByRole("button", { name: "Sembunyikan Penghantaran" }).click();
+  await expect(page.getByText("Item disembunyikan daripada pilihan.")).toBeVisible();
+  await expect(hidden.getByText("Penghantaran")).toBeVisible();
+  // hidden items are not offered when picking items
+  await page.goto("/ahli/bisnes/resit/baharu");
+  await page.getByLabel("Perkara 1").click();
+  await expect(page.getByRole("listbox", { name: "Katalog" }).getByRole("option", { name: /Penghantaran/ })).toHaveCount(0);
+  // show it again
+  await page.goto("/ahli/bisnes?tab=katalog");
+  await hidden.getByRole("button", { name: "Paparkan semula Penghantaran" }).click();
+  await expect(page.getByText("Item dipaparkan semula.")).toBeVisible();
+  await expect(sold.getByText("Penghantaran")).toBeVisible();
+  await expect(hidden).toHaveCount(0);
+  // delete asks first; "Batal" keeps the item
+  await sold.getByRole("button", { name: "Padam Benih cili (pek)" }).click();
+  await page.getByRole("button", { name: "Batal" }).click();
+  await expect(sold.getByText("Benih cili (pek)")).toBeVisible();
+  await sold.getByRole("button", { name: "Padam Benih cili (pek)" }).click();
+  await page.getByRole("button", { name: "Ya, padam" }).click();
+  await expect(page.getByText("Item dipadam daripada katalog.")).toBeVisible();
+  await expect(page.getByText("Benih cili (pek)")).toHaveCount(0);
+  // invoices that used the item are unchanged
+  await page.goto("/ahli/bisnes?tab=invois");
+  await page.getByRole("link", { name: /^INV-/ }).first().click();
+  await expect(page.getByRole("cell", { name: "Benih cili (pek)" })).toBeVisible();
+});
