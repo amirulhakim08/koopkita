@@ -36,6 +36,7 @@ const businessSchema = z
     sst_rate: z.preprocess(emptyToUndef, z.coerce.number().min(0.01, "Kadar SST tidak sah").max(25).optional()),
     sst_reg_no: z.preprocess(emptyToUndef, z.string().max(50).optional()),
     default_notes: z.preprocess(emptyToUndef, z.string().max(1000).optional()),
+    default_terms: z.preprocess(emptyToUndef, z.string().max(2000, "Terma terlalu panjang (maks 2000 aksara)").optional()),
   })
   .refine((d) => !d.sst_enabled || d.sst_rate, { path: ["sst_rate"], message: "Nyatakan kadar SST (%)" });
 
@@ -298,6 +299,72 @@ export async function cancelInvoiceAction(_prev: ActionState, formData: FormData
   return callRpc("cancel_invoice", { p_id: id.data, p_reason: reason.data }, { success: "Invois dibatalkan.", revalidate: ["/ahli/bisnes"] });
 }
 
+// ---------------------------------------------------------------- quotations (sebut harga)
+const quoteSchema = z.object({
+  id: z.preprocess(emptyToUndef, uuid.optional()),
+  issue_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarikh tidak sah"),
+  valid_until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarikh tidak sah"),
+  scope: z.preprocess(emptyToUndef, z.string().max(2000, "Skop kerja terlalu panjang (maks 2000 aksara)").optional()),
+  terms: z.preprocess(emptyToUndef, z.string().max(2000, "Terma terlalu panjang (maks 2000 aksara)").optional()),
+  items: z.array(itemSchema).min(1, "Tambah sekurang-kurangnya satu item").max(100),
+  intent: z.enum(["save", "send"]),
+}).refine((d) => d.valid_until >= d.issue_date, { path: ["valid_until"], message: "Tarikh sah sehingga mesti selepas tarikh sebut harga" });
+
+export async function saveQuoteAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireActiveMember();
+  const parsed = quoteSchema.safeParse({ ...Object.fromEntries(formData), items: postedItems(formData), intent: formData.get("intent") ?? "save" });
+  if (!parsed.success) return fail("Sila semak sebut harga.", fieldErrors(parsed.error));
+  const d = parsed.data;
+  const items = itemsForRpc(d.items);
+  if (items.error) return fail(items.error);
+  const customer = await resolveCustomer(formData, false);
+  if ("error" in customer) return customer.error;
+  const saved = await callRpc<string>("save_quote_draft", {
+    p_id: d.id ?? null, p_customer_id: customer.id, p_issue_date: d.issue_date, p_valid_until: d.valid_until,
+    p_scope: d.scope ?? null, p_terms: d.terms ?? null, p_items: items.rows,
+  }, { success: "Draf sebut harga disimpan.", revalidate: ["/ahli/bisnes"] });
+  if (!saved?.ok) return saved;
+  await saveLinesToCatalog(formData);
+  if (d.intent === "send") {
+    const sent = await callRpc<string>("send_quote", { p_id: saved.data }, { success: "Sebut harga dikeluarkan.", revalidate: ["/ahli/bisnes"] });
+    if (!sent?.ok) return sent;
+  }
+  redirect(`/ahli/bisnes/sebut-harga/${saved.data}${d.intent === "send" ? "?dikeluarkan=1" : ""}`);
+}
+
+export async function deleteQuoteDraftAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const id = uuid.safeParse(formData.get("id"));
+  if (!id.success) return fail("Permintaan tidak sah.");
+  const res = await callRpc("delete_quote_draft", { p_id: id.data }, { success: "Draf dipadam.", revalidate: ["/ahli/bisnes"] });
+  if (!res?.ok) return res;
+  redirect("/ahli/bisnes?tab=sebut-harga");
+}
+
+export async function setQuoteStatusAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const id = uuid.safeParse(formData.get("id"));
+  const status = z.enum(["accepted", "rejected"]).safeParse(formData.get("status"));
+  if (!id.success || !status.success) return fail("Permintaan tidak sah.");
+  return callRpc("set_quote_status", { p_id: id.data, p_status: status.data }, {
+    success: status.data === "accepted" ? "Ditanda: pelanggan setuju." : "Ditanda: pelanggan menolak.", revalidate: ["/ahli/bisnes"],
+  });
+}
+
+export async function convertQuoteAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const id = uuid.safeParse(formData.get("id"));
+  if (!id.success) return fail("Permintaan tidak sah.");
+  const res = await callRpc<string>("convert_quote_to_invoice", { p_id: id.data }, { success: "Invois dicipta daripada sebut harga.", revalidate: ["/ahli/bisnes"] });
+  if (!res?.ok) return res;
+  redirect(`/ahli/bisnes/invois/${res.data}?daripada=sebut-harga`);
+}
+
+export async function duplicateQuoteAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const id = uuid.safeParse(formData.get("id"));
+  if (!id.success) return fail("Permintaan tidak sah.");
+  const res = await callRpc<string>("duplicate_quote", { p_id: id.data }, { success: "Salinan draf dicipta.", revalidate: ["/ahli/bisnes"] });
+  if (!res?.ok) return res;
+  redirect(`/ahli/bisnes/sebut-harga/${res.data}`);
+}
+
 // ---------------------------------------------------------------- payments / receipts
 const paymentSchema = z.object({
   invoice_id: uuid,
@@ -328,7 +395,7 @@ export async function reversePaymentAction(_prev: ActionState, formData: FormDat
 }
 
 export async function setShareAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const kind = z.enum(["invoice", "receipt"]).safeParse(formData.get("kind"));
+  const kind = z.enum(["invoice", "receipt", "quote"]).safeParse(formData.get("kind"));
   const id = uuid.safeParse(formData.get("id"));
   if (!kind.success || !id.success) return fail("Permintaan tidak sah.");
   const mode = formData.get("mode");

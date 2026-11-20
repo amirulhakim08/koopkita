@@ -32,7 +32,8 @@ export default async function PublicDocumentPage({ params }: { params: Promise<{
   const logo = logoUrl(b.logo_path);
   const direct = Boolean(p && inv.is_direct); // receipt of a sale paid on the spot: items, no invoice
   const paidBefore = p && !direct ? Math.max(0, inv.total_sen - p.balance_after_sen - p.amount_sen) : 0;
-  const stamp = p ? (p.reversed ? ["DIBALIKKAN", "text-danger border-danger"] : ["DIBAYAR", "text-success border-success"])
+  const isQuote = doc.kind === "quote";
+  const stamp = isQuote ? (inv.overdue ? ["TAMAT TEMPOH", "text-warning border-warning"] : null) : p ? (p.reversed ? ["DIBALIKKAN", "text-danger border-danger"] : ["DIBAYAR", "text-success border-success"])
     : inv.status === "cancelled" ? ["DIBATALKAN", "text-danger border-danger"] : inv.status === "paid" ? ["DIBAYAR", "text-success border-success"] : null;
 
   return (
@@ -52,7 +53,7 @@ export default async function PublicDocumentPage({ params }: { params: Promise<{
               </div>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-black text-primary">{p ? "RESIT" : "INVOIS"}</p>
+              <p className="text-2xl font-black text-primary">{p ? "RESIT" : isQuote ? "SEBUT HARGA" : "INVOIS"}</p>
               <p className="font-mono text-sm">{p ? p.receipt_no : inv.invoice_no}</p>
             </div>
           </header>
@@ -71,6 +72,12 @@ export default async function PublicDocumentPage({ params }: { params: Promise<{
                   {p.reference && <p>Rujukan: {p.reference}</p>}
                   {!direct && <p>Invois: {inv.invoice_no}</p>}
                 </>
+              ) : isQuote ? (
+                <>
+                  <p>Tarikh: {formatDate(inv.issue_date)}</p>
+                  <p>Sah sehingga: {formatDate(inv.due_date)}</p>
+                  {inv.overdue && <p className="font-semibold text-warning">Tamat tempoh</p>}
+                </>
               ) : (
                 <>
                   <p>Tarikh invois: {formatDate(inv.issue_date)}</p>
@@ -81,6 +88,12 @@ export default async function PublicDocumentPage({ params }: { params: Promise<{
             </div>
           </div>
 
+          {inv.scope && !p && (
+            <div className="mt-6 rounded-xl border p-3 text-sm">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Skop kerja</p>
+              <p className="whitespace-pre-line">{inv.scope}</p>
+            </div>
+          )}
           {p && !direct && <p className="mt-6 text-xs uppercase tracking-wide text-muted-foreground">Butiran invois {inv.invoice_no}</p>}
           <table className={p && !direct ? "mt-1 w-full text-sm" : "mt-6 w-full text-sm"}>
             <thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="w-8 py-2">No.</th><th className="py-2">Perkara</th><th className="py-2 text-right">Unit</th><th className="py-2 text-right">Jumlah</th></tr></thead>
@@ -111,7 +124,13 @@ export default async function PublicDocumentPage({ params }: { params: Promise<{
                 <div className="flex justify-between border-t pt-1 text-lg font-black"><dt>{direct ? "Jumlah diterima" : "Jumlah"}</dt><dd>{formatRM(direct ? p!.amount_sen : inv.total_sen)}</dd></div>
                 {inv.paid_sen > 0 && !direct && <div className="flex justify-between font-semibold"><dt>Baki</dt><dd>{formatRM(inv.total_sen - inv.paid_sen)}</dd></div>}
               </dl>
-              {b.bank_account_no && !direct && inv.status !== "paid" && inv.status !== "cancelled" && (
+              {inv.terms && (
+                <div className="mt-4 rounded-xl bg-muted p-3 text-sm">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Terma &amp; syarat</p>
+                  <p className="whitespace-pre-line">{inv.terms}</p>
+                </div>
+              )}
+              {b.bank_account_no && !direct && !isQuote && inv.status !== "paid" && inv.status !== "cancelled" && (
                 <div className="mt-6 rounded-xl bg-accent-soft p-4 text-sm">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Cara bayaran</p>
                   <p><strong>{b.bank_name}</strong> · <span className="font-mono font-bold">{b.bank_account_no}</span></p>

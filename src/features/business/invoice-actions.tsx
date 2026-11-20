@@ -60,7 +60,7 @@ export function DeleteDraftForm({ invoiceId }: { invoiceId: string }) {
   );
 }
 
-export function ShareLinkControls({ kind, id, enabled }: { kind: "invoice" | "receipt"; id: string; enabled: boolean }) {
+export function ShareLinkControls({ kind, id, enabled }: { kind: "invoice" | "receipt" | "quote"; id: string; enabled: boolean }) {
   return (
     <div className="flex flex-wrap gap-2">
       {(enabled ? [["disable", "Matikan pautan"], ["regenerate", "Jana pautan baharu"]] : [["enable", "Aktifkan pautan"]]).map(([mode, label]) => (

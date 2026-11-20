@@ -124,6 +124,15 @@ export const INVOICE_STATUS: Record<string, { label: string; tone: Tone }> = {
   overdue: { label: "Lewat Bayar", tone: "danger" },
 };
 
+export const QUOTE_STATUS: Record<string, { label: string; tone: Tone }> = {
+  draft: { label: "Draf", tone: "neutral" },
+  sent: { label: "Dihantar", tone: "info" },
+  accepted: { label: "Diterima", tone: "success" },
+  rejected: { label: "Ditolak", tone: "danger" },
+  converted: { label: "Ditukar ke invois", tone: "success" },
+  expired: { label: "Tamat tempoh", tone: "warning" },
+};
+
 export const PAYMENT_METHODS: Record<string, string> = {
   bank_transfer: "Pindahan bank",
   duitnow: "DuitNow",

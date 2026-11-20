@@ -67,8 +67,10 @@ function BusinessDoc({ doc, logo }: { doc: DocumentJson; logo: Awaited<ReturnTyp
   const inv = doc.invoice;
   const b = inv.business;
   const isReceipt = doc.kind === "receipt" && doc.payment;
+  const isQuote = doc.kind === "quote";
   const p = doc.payment;
-  const title = isReceipt ? "RESIT" : "INVOIS";
+  const title = isReceipt ? "RESIT" : isQuote ? "SEBUT HARGA" : "INVOIS";
+  const validDays = isQuote ? Math.round((Date.parse(`${inv.due_date}T00:00:00Z`) - Date.parse(`${inv.issue_date}T00:00:00Z`)) / 86_400_000) : 0;
   const number = isReceipt ? p!.receipt_no : inv.invoice_no ?? "DRAF";
   const balance = inv.total_sen - inv.paid_sen;
   const direct = Boolean(isReceipt && inv.is_direct); // receipt of a sale paid on the spot: shows its items, no invoice
@@ -92,6 +94,9 @@ function BusinessDoc({ doc, logo }: { doc: DocumentJson; logo: Awaited<ReturnTyp
           <View>
             <Text style={s.docTitle}>{title}</Text>
             <Text style={s.docNo}>{number}</Text>
+            {isQuote && inv.status !== "draft" && (inv.overdue
+              ? <Stamp text="TAMAT TEMPOH" color="#9a6b00" />
+              : <Stamp text={`SAH ${validDays} HARI`} color="#1d4f91" />)}
             {inv.status === "cancelled" && !isReceipt && <Stamp text="DIBATALKAN" color="#b42318" />}
             {inv.status === "draft" && <Stamp text="DRAF" color="#9a6b00" />}
             {isReceipt && (p!.reversed ? <Stamp text="DIBALIKKAN" color="#b42318" /> : <Stamp text="DIBAYAR" color="#2d6a4f" />)}
@@ -115,6 +120,12 @@ function BusinessDoc({ doc, logo }: { doc: DocumentJson; logo: Awaited<ReturnTyp
                 {p!.reference && <Text>Rujukan: {p!.reference}</Text>}
                 {!direct && <Text>Untuk invois: {inv.invoice_no}</Text>}
               </>
+            ) : isQuote ? (
+              <>
+                <Text style={s.label}>Butiran sebut harga</Text>
+                <Text>Tarikh: {formatDate(inv.issue_date)}</Text>
+                <Text>Sah sehingga: {formatDate(inv.due_date)}</Text>
+              </>
             ) : (
               <>
                 <Text style={s.label}>Butiran invois</Text>
@@ -126,6 +137,11 @@ function BusinessDoc({ doc, logo }: { doc: DocumentJson; logo: Awaited<ReturnTyp
           </View>
         </View>
 
+        {inv.scope && !isReceipt && (
+          <View style={[s.box, { flexGrow: 0, flexBasis: "auto", marginBottom: 12 }]}>
+            <Text style={s.label}>Skop kerja</Text><Text>{inv.scope}</Text>
+          </View>
+        )}
         {isReceipt && !direct && <Text style={[s.label, { marginBottom: 4 }]}>Butiran invois {inv.invoice_no}</Text>}
         {(
           <View style={s.table}>
@@ -179,7 +195,10 @@ function BusinessDoc({ doc, logo }: { doc: DocumentJson; logo: Awaited<ReturnTyp
           )}
         </View>
 
-        {!isReceipt && inv.status !== "cancelled" && inv.status !== "paid" && b.bank_account_no && (
+        {inv.terms && !isReceipt && (
+          <View style={s.pay}><Text style={s.label}>Terma &amp; syarat</Text><Text>{inv.terms}</Text></View>
+        )}
+        {!isReceipt && !isQuote && inv.status !== "cancelled" && inv.status !== "paid" && b.bank_account_no && (
           <View style={s.pay}>
             <Text style={s.label}>Cara bayaran</Text>
             <Text>Bank: <Text style={s.bold}>{b.bank_name ?? "-"}</Text>   No. akaun: <Text style={s.bold}>{b.bank_account_no}</Text></Text>
@@ -198,7 +217,7 @@ function BusinessDoc({ doc, logo }: { doc: DocumentJson; logo: Awaited<ReturnTyp
         )}
 
         <Text style={s.foot} fixed>
-          {isReceipt ? "Resit ini dijana oleh komputer dan tidak memerlukan tandatangan." : "Invois ini dijana oleh komputer."} · {b.name} · Dijana melalui KoopKITA
+          {isReceipt ? "Resit ini dijana oleh komputer dan tidak memerlukan tandatangan." : isQuote ? "Sebut harga ini dijana oleh komputer." : "Invois ini dijana oleh komputer."} · {b.name} · Dijana melalui KoopKITA
         </Text>
       </Page>
     </Document>
@@ -279,7 +298,7 @@ export async function renderCoopReceiptPdf(r: CoopReceiptJson): Promise<Buffer> 
 
 export function documentFileName(doc: DocumentJson): string {
   const n = doc.kind === "receipt" && doc.payment ? doc.payment.receipt_no : doc.invoice.invoice_no ?? "DRAF";
-  return `${doc.kind === "receipt" ? "Resit" : "Invois"}-${n}.pdf`;
+  return `${doc.kind === "receipt" ? "Resit" : doc.kind === "quote" ? "SebutHarga" : "Invois"}-${n}.pdf`;
 }
 
 export function pdfResponse(buffer: Buffer, fileName: string, inline = true): Response {

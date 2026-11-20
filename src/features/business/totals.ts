@@ -12,6 +12,11 @@ export function invoiceTotals(lines: LineInput[], taxRateBp = 0) {
   return { subtotal, discount, tax, total: subtotal - discount + tax };
 }
 
+/** A sent quotation past its valid-until date is shown as "expired" (Tamat tempoh). */
+export function displayQuoteStatus(status: string, validUntil: string, todayIso: string): string {
+  return status === "sent" && validUntil < todayIso ? "expired" : status;
+}
+
 /** Status shown to people: an unpaid invoice past its due date is "overdue". */
 export function displayStatus(status: string, dueDate: string, todayIso: string): string {
   return (status === "issued" || status === "partially_paid") && dueDate < todayIso ? "overdue" : status;

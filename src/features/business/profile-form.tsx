@@ -10,7 +10,7 @@ import { saveBusinessAction } from "./actions";
 export type BusinessRow = {
   id: string; name: string; ssm_no: string | null; phone: string; email: string | null; address: string | null;
   bank_name: string | null; bank_account_no: string | null; bank_account_holder: string | null; logo_path: string | null;
-  sst_enabled: boolean; sst_rate_bp: number; sst_reg_no: string | null; default_notes: string | null;
+  sst_enabled: boolean; sst_rate_bp: number; sst_reg_no: string | null; default_notes: string | null; default_terms?: string | null;
   ssm_verified_at: string | null; suspended_at: string | null; suspend_reason: string | null;
 };
 
@@ -54,6 +54,9 @@ export function BusinessProfileForm({ userId, business }: { userId: string; busi
       </fieldset>
       <FormField label="Nota tetap pada invois (pilihan)" htmlFor="default_notes" hint="Dimasukkan secara automatik pada setiap invois baharu dan boleh diubah setiap kali. Cth. Terima kasih atas sokongan anda.">
         <Textarea id="default_notes" name="default_notes" rows={2} defaultValue={business?.default_notes ?? ""} />
+      </FormField>
+      <FormField label="Terma & syarat tetap pada sebut harga (pilihan)" htmlFor="default_terms" name="default_terms" hint="Dimasukkan secara automatik pada setiap sebut harga baharu. Cth. Deposit 30% sebelum kerja dimulakan. Baki dibayar selepas kerja siap.">
+        <Textarea id="default_terms" name="default_terms" rows={3} maxLength={2000} defaultValue={business?.default_terms ?? ""} />
       </FormField>
       <SubmitButton>Simpan profil bisnes</SubmitButton>
     </ActionForm>
