@@ -71,7 +71,7 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
 
 ## Phase 7 — Deployment ✅ (live, iterating)
 - ✅ Supabase project **mydevelopment** (`pikifjnwjpzoeqhorvpe`, ap-southeast-1 Singapore), used for KoopKITA only.
-- ✅ Migrations 000001–000016 applied (schema only, **no seed data**). After each one, the full schema fingerprint (functions, columns, constraints, policies, triggers, grants) matched the tested local stack.
+- ✅ Migrations 000001–000017 applied (schema only, **no seed data**). After each one, the full schema fingerprint (functions, columns, constraints, policies, triggers, grants) matched the tested local stack.
 - ✅ Private buckets `receipts`, `payout-proofs`, `business-proofs`; public `business-logos`; pg_cron job `koopkita-expire-reservations` (every 15 min).
 - ✅ Vercel project `koopkita` deployed from `main` at https://koopkita.vercel.app with the 3 public env vars.
 - ✅ First Super Admin provisioned (KITA-0001).
@@ -87,6 +87,15 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
   - Enter the official cooperative bank account and cooperative details (reg. no, address, logo) in Tetapan
 
 ## Change log
+- **2026-11-20: quotations (Sebut Harga), loading screen, phone-width fixes (migration 000017, applied; production fingerprint matches local).**
+  - **Sebut Harga:**
+    - Draft → send (`QT-YYMMDDNNN`) → accepted / rejected → **Tukar ke Invois**, which copies items, scope of work and terms into an invoice draft.
+    - Deposit and balance are recorded as partial payments.
+    - Own tab, PDF with a "SAH n HARI" stamp, customer link, and "Salin & ubah".
+    - Default terms are kept on the business profile. Quotations are not counted as sales.
+  - **Loading screen:** the installed app starts on the static `/buka` page (logo and spinner), which the service worker keeps on the device, so it appears at once while the server checks the session.
+  - **Phone width:** grid columns may shrink below their content. Modal Syer and admin Kempen, Kewangan and member commission pages now fit the screen. E2E checks were added.
+  - Tests: unit 36/36, integration 72/72, e2e 27/27.
 - **2026-11-20: catalogue hide / show / delete (migration 000016, applied; production fingerprint matches local).**
   - Each catalogue item shows its buttons directly. Hidden items have their own "Disembunyikan" section with a clear "Paparkan semula" button; before this, the button was tucked inside "Ubah" on a faded card.
   - Members can delete items they no longer sell, after a confirmation. Catalogue rows are only templates, so issued invoices and receipts are unaffected. Only the owner can delete.
