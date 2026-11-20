@@ -313,7 +313,7 @@ test("sebut harga: draft with scope and terms → send → share PDF → custome
   await page.getByRole("button", { name: "Keluarkan" }).click();
   await expect(page.getByText("Sebut harga dikeluarkan").first()).toBeVisible();
   const quoteNo = (await page.getByRole("heading", { level: 1 }).textContent())!.trim();
-  expect(quoteNo).toMatch(/^QT-\d{6}002$/); // the seed already has one today
+  expect(quoteNo).toMatch(/^QT-\d{9}$/); // YYMMDD + daily sequence
   await expect(page.getByText("Membina bangsal simpanan baja 10x12 kaki")).toBeVisible();
   const quoteUrl = page.url().split("?")[0];
 
