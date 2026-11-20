@@ -25,3 +25,30 @@ test("the mobile menu opens over the whole screen and navigates", async ({ page 
   await expect(page).toHaveURL(/\/admin\/kewangan$/);
   await expect(menu).toHaveCount(0);
 });
+
+// Pages with a wide table or form next to other content used to be wider than the phone screen.
+const pageWidthOverflow = (page: import("@playwright/test").Page) =>
+  page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+
+test("member pages fit the phone screen width", async ({ page }) => {
+  await login(page, MEMBER1);
+  for (const url of ["/ahli/saham", "/ahli/korban", "/ahli/komisen", "/ahli/bisnes?tab=resit", "/ahli/bisnes/resit/baharu"]) {
+    await page.goto(url);
+    await page.waitForLoadState("networkidle");
+    expect(await pageWidthOverflow(page), url).toBeLessThanOrEqual(0);
+  }
+});
+
+test("admin pages fit the phone screen width", async ({ page }) => {
+  await login(page, ADMIN);
+  for (const url of ["/admin/kempen", "/admin/kewangan", "/admin/saham", "/admin/bisnes"]) {
+    await page.goto(url, { waitUntil: "load" });
+    await page.waitForTimeout(800);
+    expect(await pageWidthOverflow(page), url).toBeLessThanOrEqual(0);
+  }
+  await page.goto("/admin/komisen", { waitUntil: "load" });
+  await page.locator('a[href^="/admin/komisen/"]').filter({ hasNotText: "Bayaran" }).first().click();
+  await page.waitForURL(/\/admin\/komisen\/[0-9a-f-]{36}/);
+  await page.waitForTimeout(800);
+  expect(await pageWidthOverflow(page)).toBeLessThanOrEqual(0);
+});

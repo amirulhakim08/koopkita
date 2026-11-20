@@ -17,9 +17,9 @@ export function BankDetails({ bank, amountLabel }: { bank: BankSettings; amountL
         <Landmark className="size-4" /> Bayar terus ke akaun rasmi koperasi
       </div>
       <dl className="grid gap-2 text-sm sm:grid-cols-3">
-        <div><dt className="text-xs text-muted-foreground">Bank</dt><dd className="font-semibold">{bank.bankName ?? "-"}</dd></div>
-        <div><dt className="text-xs text-muted-foreground">Nama akaun</dt><dd className="font-semibold">{bank.accountName ?? "-"}</dd></div>
-        <div><dt className="text-xs text-muted-foreground">No. akaun</dt><dd className="font-mono text-base font-bold tracking-wide">{bank.accountNo}</dd></div>
+        <div className="min-w-0"><dt className="text-xs text-muted-foreground">Bank</dt><dd className="break-words font-semibold">{bank.bankName ?? "-"}</dd></div>
+        <div className="min-w-0"><dt className="text-xs text-muted-foreground">Nama akaun</dt><dd className="break-words font-semibold">{bank.accountName ?? "-"}</dd></div>
+        <div className="min-w-0"><dt className="text-xs text-muted-foreground">No. akaun</dt><dd className="break-all font-mono text-base font-bold tracking-wide">{bank.accountNo}</dd></div>
       </dl>
       {amountLabel && <p className="mt-3 text-sm">Jumlah perlu dibayar: <strong>{amountLabel}</strong></p>}
       {bank.instructions && <p className="mt-2 whitespace-pre-line text-xs text-muted-foreground">{bank.instructions}</p>}
