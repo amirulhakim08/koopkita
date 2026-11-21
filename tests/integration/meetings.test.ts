@@ -62,6 +62,29 @@ describe("invitations", () => {
     expect((await pool.query(`select 1 from public.meeting_invitees where meeting_id = $1 and member_id = $2`, [id, pending])).rowCount).toBe(0);
   });
 
+  it("members approved after an 'all' meeting was published are invited and can confirm", async () => {
+    const id = await create({ audience: "all" });
+    await asUser(pool, admin, `select public.publish_meeting($1)`, [id]);
+    await asUser(pool, admin, `select public.open_attendance($1)`, [id]);
+    await asUser(pool, admin, `select public.set_meeting_code($1, '24680')`, [id]);
+    // registers at the door during the meeting and is approved
+    const walkIn = await createActiveMember(pool, admin, `pintu-${++seq}@mesyuarat.test`);
+    expect(await status(id, walkIn)).toEqual({ status: "pending", method: null });
+    expect((await pool.query(`select count(*)::int c from public.notifications where user_id = $1 and link = $2`, [walkIn, `/ahli/mesyuarat/${id}`])).rows[0].c).toBe(1);
+    expect(await asUser(pool, walkIn, `select id from public.meetings where id = $1`, [id])).toHaveLength(1);
+    expect((await confirm(walkIn, id, "24680")).ok).toBe(true);
+    // a selected-members meeting does not pick them up, nor does a finished one
+    const other = await member();
+    const selected = await create({}, [other]);
+    await asUser(pool, admin, `select public.publish_meeting($1)`, [selected]);
+    const late = await createActiveMember(pool, admin, `lewat-${++seq}@mesyuarat.test`);
+    expect((await pool.query(`select 1 from public.meeting_invitees where meeting_id = $1 and member_id = $2`, [selected, late])).rowCount).toBe(0);
+    // suspending and reactivating does not duplicate the invitation
+    await asUser(pool, admin, `select public.set_member_suspension($1, true, 'Ujian gantung sementara')`, [walkIn]);
+    await asUser(pool, admin, `select public.set_member_suspension($1, false, 'Ujian aktif semula')`, [walkIn]);
+    expect((await pool.query(`select count(*)::int c from public.meeting_invitees where meeting_id = $1 and member_id = $2`, [id, walkIn])).rows[0].c).toBe(1);
+  });
+
   it("validates links (https only), location and the participant choice", async () => {
     const m = await member();
     await expect(create({ online_url: "http://meet.google.com/x" }, [m])).rejects.toThrow(/https/);
