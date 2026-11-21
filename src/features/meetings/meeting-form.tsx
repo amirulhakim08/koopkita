@@ -93,7 +93,7 @@ export function MeetingForm({ meeting: m, members, selected = [], lockAudience =
           ) : (
             <>
               <fieldset className="grid gap-2 sm:grid-cols-2" aria-label="Pilihan peserta">
-                {([["all", "Semua Ahli Aktif", `${members.length} ahli aktif dijemput secara automatik`], ["selected", "Ahli Terpilih", "Cari dan pilih ahli satu persatu"]] as const).map(([v, l, d]) => (
+                {([["all", "Semua Ahli Aktif", `${members.length} ahli aktif dijemput; ahli yang diluluskan kemudian turut dijemput selagi mesyuarat berjalan`], ["selected", "Ahli Terpilih", "Cari dan pilih ahli satu persatu"]] as const).map(([v, l, d]) => (
                   <label key={v} className={cn("flex cursor-pointer gap-3 rounded-lg border p-3 text-sm", audience === v ? "border-primary bg-secondary" : "hover:bg-muted")}>
                     <input type="radio" name="audience" value={v} checked={audience === v} onChange={() => setAudience(v)} className="mt-0.5 accent-[var(--primary)]" />
                     <span><strong className="block">{l}</strong><span className="text-xs text-muted-foreground">{d}</span></span>

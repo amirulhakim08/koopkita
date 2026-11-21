@@ -71,8 +71,8 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
 
 ## Phase 7 — Deployment ✅ (live, iterating)
 - ✅ Supabase project **mydevelopment** (`pikifjnwjpzoeqhorvpe`, ap-southeast-1 Singapore), used for KoopKITA only.
-- ✅ Migrations 000001–000018 applied (schema only, **no seed data**). After each one, the full schema fingerprint (functions, columns, constraints, policies, triggers, grants) matched the tested local stack.
-- ✅ Private buckets `receipts`, `payout-proofs`, `business-proofs`; public `business-logos`. The pg_cron job `koopkita-expire-reservations` was removed with the Qurban module (000018).
+- ✅ Migrations 000001–000019 applied (schema only, **no seed data**). After each one, the full schema fingerprint (functions, columns, constraints, policies, triggers, grants) matched the tested local stack.
+- ✅ Private buckets `receipts`, `payout-proofs`, `business-proofs`; public `business-logos`. The pg_cron job `koopkita-expire-reservations` was removed with the Qurban module (000018); `koopkita-finalize-meetings` (every 5 min) closes meeting grace periods (000019).
 - ✅ Vercel project `koopkita` deployed from `main` at https://koopkita.vercel.app with the 3 public env vars.
 - ✅ First Super Admin provisioned (KITA-0001).
 - ✅ Security Advisors: no errors. Expected findings only:
@@ -87,6 +87,12 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
   - Enter the official cooperative bank account and cooperative details (reg. no, address, logo) in Tetapan
 
 ## Change log
+- **2026-11-21: Mesyuarat & kehadiran (migration 000019, applied after PR #14 merged; production fingerprint matches local, including RLS flags and the cron job).**
+  - Super Admin: physical / online / hybrid meetings (https links only), all active members or selected members, publish with notifications, open / pause the attendance session, end the meeting, cancel, manual corrections with a mandatory reason (audited).
+  - Members: meeting card on Utama (ongoing → today → next), detail and history. "Sertai Mesyuarat" only opens the link; attendance needs the 5-digit code (kept in app_private, checked in the database, 5 wrong attempts → 10-minute lock).
+  - Grace period: after the meeting ends, confirmations are accepted until 00:01 Malaysia time; then unconfirmed invitees become Tidak Hadir.
+  - Admin-only A4 PDF and Excel (4 sheets) reports with Web Share and download fallback. Attendance rate excludes excused members.
+  - Tests: unit 27/27, integration 86/86 (12 new meeting tests), e2e 28/28 including the 14-step board-meeting flow.
 - **2026-11-21: Projek (investment projects), profit sharing, dividend withdrawals and Wallet; Korban and Komisen retired (migration 000018, applied after PR #13 merged; production fingerprint matches local, including RLS flags).**
   - **Projek:** Super Admin sets target, minimum, step and an optional per-member maximum. Members join with multiples of the step, accept versioned terms and upload the receipt; only approved contributions count, and approved + pending never exceed the target.
   - **Profit declarations:** rate, gross profit, charges (deducted before the split, borne pro rata by members and cooperative), cooperative points (default: the part above 6%, max 1). Integer-sen largest-remainder allocations; draft → confirmed → money received; voiding with a reason.
