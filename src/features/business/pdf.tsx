@@ -38,7 +38,7 @@ const s = StyleSheet.create({
   verified: { fontSize: 8, color: "#2d6a4f", fontFamily: "Helvetica-Bold" },
 });
 
-async function loadLogo(path: string | null | undefined): Promise<{ data: Buffer; format: "png" | "jpg" } | null> {
+export async function loadLogo(path: string | null | undefined): Promise<{ data: Buffer; format: "png" | "jpg" } | null> {
   const url = logoUrl(path);
   if (!url) return null;
   try {

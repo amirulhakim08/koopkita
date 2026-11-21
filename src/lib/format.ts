@@ -77,3 +77,27 @@ export function parsePctToBp(input: string | null | undefined): number | null {
   const [whole, frac = ""] = cleaned.split(".");
   return Number(whole) * 100 + Number(frac.padEnd(2, "0"));
 }
+
+const MONTHS_MS = ["Januari", "Februari", "Mac", "April", "Mei", "Jun", "Julai", "Ogos", "September", "Oktober", "November", "Disember"];
+
+/** "2026-11-21" -> "21 November 2026" */
+export function formatDateLong(value: string | null | undefined): string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}/.test(value)) return "-";
+  const [y, m, d] = value.slice(0, 10).split("-").map(Number);
+  return `${d} ${MONTHS_MS[m - 1]} ${y}`;
+}
+
+/** "20:30:00" -> "8:30 malam", "09:00" -> "9:00 pagi", "13:15" -> "1:15 tengah hari" */
+export function formatTimeMs(value: string | null | undefined): string {
+  if (!value || !/^\d{2}:\d{2}/.test(value)) return "-";
+  const [h, m] = value.split(":").map(Number);
+  const part = h < 12 ? "pagi" : h < 14 ? "tengah hari" : h < 19 ? "petang" : "malam";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${part}`;
+}
+
+/** Time of an ISO timestamp in Malaysia, 24-hour: "20:47" */
+export function formatTimeKL(value: string | Date | null | undefined): string {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("en-GB", { timeZone: TIMEZONE, hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(value));
+}

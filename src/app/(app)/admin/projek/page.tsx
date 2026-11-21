@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertCircle, Briefcase, Clock, HandCoins, PiggyBank, Plus, TrendingUp, Wallet } from "lucide-react";
+import { AlertCircle, Briefcase, Clock, HandCoins, Plus, TrendingUp, Wallet, Banknote } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,7 @@ export default async function AdminProjectsPage({ searchParams }: { searchParams
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label="Jumlah projek" value={s.projects_total ?? 0} hint={`${s.projects_open ?? 0} dibuka · ${s.projects_active ?? 0} berjalan`} icon={Briefcase} />
-        <StatCard emphasis label="Dana terkumpul" value={formatRM(s.project_capital_sen)} hint={`Sasaran ${formatRM(s.project_target_sen)}`} icon={PiggyBank} />
+        <StatCard emphasis label="Dana terkumpul" value={formatRM(s.project_capital_sen)} hint={`Sasaran ${formatRM(s.project_target_sen)}`} icon={Banknote} />
         <StatCard label="Modal dilaburkan (aktif)" value={formatRM(s.active_capital_sen)} icon={TrendingUp} />
         <StatCard label="Pendapatan koperasi" value={formatRM(s.coop_profit_sen)} hint={`Keuntungan diterima ${formatRM(s.profit_received_sen)}`} icon={HandCoins} />
       </div>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarClock, HandCoins, PiggyBank, TrendingUp } from "lucide-react";
+import { ArrowLeft, CalendarClock, HandCoins, TrendingUp, Banknote } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,7 +62,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         description={<span className="inline-flex flex-wrap items-center gap-2">{p.code} · {PROJECT_CATEGORY[p.category] ?? p.category} · {p.partner} <ProjectStatus status={p.status} target={Number(p.target_sen)} approved={approved} /></span>} />
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatCard emphasis label="Modal saya" value={formatRM(myApproved)} icon={PiggyBank} hint={myPending ? `${formatRM(myPending)} menunggu pengesahan` : undefined} />
+        <StatCard emphasis label="Modal saya" value={formatRM(myApproved)} icon={Banknote} hint={myPending ? `${formatRM(myPending)} menunggu pengesahan` : undefined} />
         <StatCard label="Pegangan saya" value={`${holding.toLocaleString("en-US", { maximumFractionDigits: 2 })}%`} icon={TrendingUp} hint="daripada modal projek" />
         <StatCard label="Dividen saya" value={formatRM(w?.dividend_declared_sen)} icon={HandCoins} hint={`Dikeluarkan ${formatRM(w?.withdrawn_sen)}`} />
         <StatCard label="Tersedia untuk pengeluaran" value={formatRM(w?.available_sen)} icon={CalendarClock}

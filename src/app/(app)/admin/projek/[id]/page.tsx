@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Banknote, Briefcase, Clock, FileText, HandCoins, Pencil, PiggyBank, TrendingUp, Undo2, Users } from "lucide-react";
+import { ArrowLeft, Banknote, Briefcase, Clock, FileText, HandCoins, Pencil, TrendingUp, Undo2, Users } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,7 +86,7 @@ export default async function AdminProjectPage({ params, searchParams }: { param
         actions={!["completed", "cancelled"].includes(p.status) && <Button asChild variant="outline"><Link href={`/admin/projek/${id}/ubah`}><Pencil /> Ubah</Link></Button>} />
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatCard emphasis label="Modal diluluskan" value={formatRM(approved)} hint={`Sasaran ${formatRM(p.target_sen)} · ${fundingPct(Number(p.target_sen), approved)}%`} icon={PiggyBank} />
+        <StatCard emphasis label="Modal diluluskan" value={formatRM(approved)} hint={`Sasaran ${formatRM(p.target_sen)} · ${fundingPct(Number(p.target_sen), approved)}%`} icon={Banknote} />
         <StatCard label="Menunggu semakan" value={formatRM(pr?.pending_sen)} hint={`${pr?.pending_count ?? 0} bayaran`} icon={Clock} />
         <StatCard label="Dividen ahli" value={formatRM(totalDividend)} hint={`Pendapatan koperasi ${formatRM(coopIncome)}`} icon={HandCoins} />
         <StatCard label="Peserta" value={pr?.participants ?? 0} hint={returned ? `${formatRM(returned)} modal dipulangkan` : undefined} icon={Users} />

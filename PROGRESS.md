@@ -71,8 +71,8 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
 
 ## Phase 7 — Deployment ✅ (live, iterating)
 - ✅ Supabase project **mydevelopment** (`pikifjnwjpzoeqhorvpe`, ap-southeast-1 Singapore), used for KoopKITA only.
-- ✅ Migrations 000001–000017 applied (schema only, **no seed data**). After each one, the full schema fingerprint (functions, columns, constraints, policies, triggers, grants) matched the tested local stack.
-- ✅ Private buckets `receipts`, `payout-proofs`, `business-proofs`; public `business-logos`; pg_cron job `koopkita-expire-reservations` (every 15 min).
+- ✅ Migrations 000001–000018 applied (schema only, **no seed data**). After each one, the full schema fingerprint (functions, columns, constraints, policies, triggers, grants) matched the tested local stack.
+- ✅ Private buckets `receipts`, `payout-proofs`, `business-proofs`; public `business-logos`. The pg_cron job `koopkita-expire-reservations` was removed with the Qurban module (000018).
 - ✅ Vercel project `koopkita` deployed from `main` at https://koopkita.vercel.app with the 3 public env vars.
 - ✅ First Super Admin provisioned (KITA-0001).
 - ✅ Security Advisors: no errors. Expected findings only:
@@ -87,6 +87,13 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
   - Enter the official cooperative bank account and cooperative details (reg. no, address, logo) in Tetapan
 
 ## Change log
+- **2026-11-21: Projek (investment projects), profit sharing, dividend withdrawals and Wallet; Korban and Komisen retired (migration 000018, applied after PR #13 merged; production fingerprint matches local, including RLS flags).**
+  - **Projek:** Super Admin sets target, minimum, step and an optional per-member maximum. Members join with multiples of the step, accept versioned terms and upload the receipt; only approved contributions count, and approved + pending never exceed the target.
+  - **Profit declarations:** rate, gross profit, charges (deducted before the split, borne pro rata by members and cooperative), cooperative points (default: the part above 6%, max 1). Integer-sen largest-remainder allocations; draft → confirmed → money received; voiding with a reason.
+  - **Withdrawals:** member requests reserve the amount; admin approves, the treasurer transfers outside the app, the admin records reference and receipt. Capital returns and refunds are separate.
+  - **Wallet:** Modal Syer, Prestasi Bisnes, Wallet Projek. Kewangan cash book includes all project flows; new CSV reports.
+  - **Removed:** Korban and Komisen pages, functions and tables (production held trial data only: 2 campaigns, 20 cattle; the Super Admin confirmed deletion).
+  - Tests: unit 27/27, integration 74/74 (27 new project tests), e2e 27/27.
 - **2026-11-20: quotations (Sebut Harga), loading screen, phone-width fixes (migration 000017, applied; production fingerprint matches local).**
   - **Sebut Harga:**
     - Draft → send (`QT-YYMMDDNNN`) → accepted / rejected → **Tukar ke Invois**, which copies items, scope of work and terms into an invoice draft.

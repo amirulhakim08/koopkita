@@ -140,3 +140,22 @@ export const PAYMENT_METHODS: Record<string, string> = {
   cheque: "Cek",
   other: "Lain-lain",
 };
+
+export const MEETING_STATUS: Record<string, { label: string; tone: Tone }> = {
+  draft: { label: "Draf", tone: "neutral" },
+  scheduled: { label: "Dijadualkan", tone: "info" },
+  ongoing: { label: "Sedang Berlangsung", tone: "success" },
+  completed: { label: "Selesai", tone: "neutral" },
+  cancelled: { label: "Dibatalkan", tone: "danger" },
+};
+
+export const MEETING_MODE: Record<string, string> = { physical: "Fizikal", online: "Online", hybrid: "Hybrid" };
+
+export const ATTENDANCE_STATUS: Record<string, { label: string; tone: Tone }> = {
+  pending: { label: "Belum Mengesahkan", tone: "warning" },
+  present: { label: "Hadir", tone: "success" },
+  absent: { label: "Tidak Hadir", tone: "danger" },
+  excused: { label: "Dikecualikan", tone: "info" },
+};
+
+export const ATTENDANCE_METHOD: Record<string, string> = { code: "Kod", manual: "Manual" };

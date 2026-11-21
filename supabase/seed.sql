@@ -59,6 +59,12 @@ begin
     '{"full_name":"Siti Contoh binti Dev","phone":"0122222222","ic_number":"910202022222","address":"No 2, Jalan Contoh","state":"Perlis","postcode":"01000","bank_name":"Bank Islam","bank_account_no":"2222222222","bank_account_holder":"Siti Contoh binti Dev"}');
   v_m3 := pg_temp.dev_user('ahli3@koopkita.test', 'DevAhli#2026',
     '{"full_name":"Lim Contoh Dev","phone":"0123333333","ic_number":"920303023333","address":"No 3, Jalan Contoh","state":"Pulau Pinang","postcode":"10000"}');
+  -- eight more members (CONTOH) so a 10-person board meeting can be tested
+  for i in 4..11 loop
+    perform pg_temp.dev_user('ahli' || i || '@koopkita.test', 'DevAhli#2026',
+      jsonb_build_object('full_name', 'Ahli Contoh ' || i || ' (DEV)', 'phone', '01200000' || lpad(i::text, 2, '0'),
+                         'ic_number', '9405050' || lpad(i::text, 5, '0'), 'address', 'Alamat Contoh', 'state', 'Kedah', 'postcode', '05000'));
+  end loop;
   perform pg_temp.dev_user('pemohon@koopkita.test', 'DevAhli#2026',
     '{"full_name":"Pemohon Contoh","phone":"0124444444","ic_number":"930404024444","address":"No 4, Jalan Contoh","state":"Kedah","postcode":"05100"}');
 
@@ -77,6 +83,8 @@ begin
   perform public.approve_member(v_m1, 'Data contoh pembangunan');
   perform public.approve_member(v_m2, 'Data contoh pembangunan');
   perform public.approve_member(v_m3, 'Data contoh pembangunan');
+  perform public.approve_member(p.id, 'Data contoh pembangunan')
+     from public.profiles p where p.email like 'ahli%@koopkita.test' and p.status <> 'active';
 
   -- two sample projects: one open for participation, one active with a received profit declaration
   v_open := public.save_project(null, '{"name":"Pelaburan KOPSYA 2027 (CONTOH DEV)","partner":"KOPSYA (CONTOH)","category":"pelaburan","target_sen":2000000,"min_sen":50000,"step_sen":50000,"max_per_member_sen":500000,"duration_months":12,"description":"Projek contoh untuk pembangunan sahaja.","terms":"Terma contoh: modal dilaburkan bersama rakan kongsi selama 12 bulan.","risk_disclosure":"Contoh: pulangan lepas bukan jaminan. Modal boleh berkurang."}');
