@@ -22,7 +22,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
   if (term) query = query.ilike("action", `%${term}%`);
   if (jenis && /^[a-z_]+$/.test(jenis)) query = query.eq("entity_type", jenis);
   const { data } = await query;
-  const types = ["profile", "share_transaction", "campaign", "cattle", "cattle_slot", "qurban_sale", "payment_submission", "qurban_participant", "commission_payout", "system_setting", "notification", "report"];
+  const types = ["profile", "share_transaction", "project", "project_participation", "project_profit_declaration", "project_withdrawal", "project_capital_return", "coop_ledger_entry", "system_setting", "notification", "report"];
   const qs = (n: number) => `?${new URLSearchParams({ ...(q ? { q } : {}), ...(jenis ? { jenis } : {}), m: String(n) })}`;
   return (
     <>

@@ -19,8 +19,9 @@ import { BUSINESSES, CASHBOOK_CATEGORIES, CASHBOOK_SOURCES } from "@/lib/labels"
 export const metadata = { title: "Kewangan Koperasi" };
 
 type Summary = {
-  as_of: string; share_capital_sen: number; qurban_received_sen: number; commission_paid_sen: number;
-  manual_in_sen: number; manual_out_sen: number; total_funds_sen: number; funds_excl_share_sen: number;
+  as_of: string; share_capital_sen: number; project_capital_sen: number; project_invested_sen: number; project_profit_sen: number;
+  capital_received_sen: number; dividend_paid_sen: number; capital_returned_sen: number; coop_profit_share_sen: number;
+  member_dividend_sen: number; dividend_liability_sen: number; manual_in_sen: number; manual_out_sen: number; total_funds_sen: number; funds_excl_share_sen: number;
   period_in_sen: number; period_out_sen: number;
   by_business: { business: string; in_sen: number | null; out_sen: number | null; net_sen: number }[];
 };
@@ -58,7 +59,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         <StatCard emphasis label="Jumlah dana koperasi" value={formatRM(s.total_funds_sen)} icon={Landmark} hint={`Setakat ${formatDate(s.as_of)}`} />
         <StatCard label="Modal syer ahli" value={formatRM(s.share_capital_sen)} icon={Coins} />
         <StatCard label="Dana selain modal syer" value={formatRM(s.funds_excl_share_sen)} icon={Wallet}
-          hint="Korban, perniagaan lain & perbelanjaan" />
+          hint="Projek, perniagaan lain & perbelanjaan" />
         <StatCard label="Masuk / keluar (tempoh)" value={<span className="block space-y-0.5 text-base"><span className="block whitespace-nowrap text-success">+{formatRM(s.period_in_sen)}</span><span className="block whitespace-nowrap text-danger">−{formatRM(s.period_out_sen)}</span></span>} hint={`${formatDate(from)} – ${formatDate(to)}`} />
       </div>
 
@@ -67,12 +68,32 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         <CardContent>
           <dl className="grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
             <div className="flex justify-between"><dt className="text-muted-foreground">Modal syer diluluskan</dt><dd className="tabular-nums">+{formatRM(s.share_capital_sen)}</dd></div>
-            <div className="flex justify-between"><dt className="text-muted-foreground">Bayaran korban diterima (disahkan)</dt><dd className="tabular-nums">+{formatRM(s.qurban_received_sen)}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted-foreground">Modal projek ahli (diluluskan)</dt><dd className="tabular-nums">+{formatRM(s.project_capital_sen)}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted-foreground">Dihantar kepada organisasi pelaburan</dt><dd className="tabular-nums text-danger">−{formatRM(s.project_invested_sen)}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted-foreground">Keuntungan projek diterima</dt><dd className="tabular-nums">+{formatRM(s.project_profit_sen)}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted-foreground">Dividen dibayar kepada ahli</dt><dd className="tabular-nums text-danger">−{formatRM(s.dividend_paid_sen)}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted-foreground">Modal diterima semula (matang)</dt><dd className="tabular-nums">+{formatRM(s.capital_received_sen)}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted-foreground">Modal dipulangkan kepada ahli</dt><dd className="tabular-nums text-danger">−{formatRM(s.capital_returned_sen)}</dd></div>
             <div className="flex justify-between"><dt className="text-muted-foreground">Wang masuk lain (rekod manual)</dt><dd className="tabular-nums">+{formatRM(s.manual_in_sen)}</dd></div>
-            <div className="flex justify-between"><dt className="text-muted-foreground">Komisen dibayar</dt><dd className="tabular-nums text-danger">−{formatRM(s.commission_paid_sen)}</dd></div>
             <div className="flex justify-between"><dt className="text-muted-foreground">Wang keluar / pengeluaran (rekod manual)</dt><dd className="tabular-nums text-danger">−{formatRM(s.manual_out_sen)}</dd></div>
             <div className="flex justify-between border-t pt-2 font-bold"><dt>Jumlah dana koperasi</dt><dd className="tabular-nums">{formatRM(s.total_funds_sen)}</dd></div>
           </dl>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader className="flex-row items-center justify-between gap-3">
+          <div><CardTitle>Kewangan projek</CardTitle><CardDescription>Bukan aliran tunai: pecahan keuntungan yang diterima dan baki dividen yang masih terhutang kepada ahli.</CardDescription></div>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline" size="sm"><Link href="/admin/projek">Projek</Link></Button>
+            <Button asChild variant="outline" size="sm"><Link href="/admin/projek/pengeluaran">Pengeluaran dividen</Link></Button>
+          </div>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+          <div><p className="text-xs text-muted-foreground">Pendapatan koperasi (bahagian keuntungan)</p><p className="text-lg font-bold tabular-nums">{formatRM(s.coop_profit_share_sen)}</p></div>
+          <div><p className="text-xs text-muted-foreground">Dividen ahli (diterima)</p><p className="text-lg font-bold tabular-nums">{formatRM(s.member_dividend_sen)}</p></div>
+          <div><p className="text-xs text-muted-foreground">Dividen dibayar</p><p className="text-lg font-bold tabular-nums">{formatRM(s.dividend_paid_sen)}</p></div>
+          <div><p className="text-xs text-muted-foreground">Liabiliti dividen belum dibayar</p><p className="text-lg font-bold tabular-nums text-warning">{formatRM(s.dividend_liability_sen)}</p></div>
         </CardContent>
       </Card>
 
@@ -80,7 +101,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         <Card className="xl:col-span-2">
           <CardHeader>
             <CardTitle>Rekod wang masuk / keluar</CardTitle>
-            <CardDescription>Untuk perniagaan lain, perbelanjaan dan pengeluaran. Modal syer, bayaran korban dan komisen direkodkan automatik.</CardDescription>
+            <CardDescription>Untuk perniagaan lain, perbelanjaan dan pengeluaran. Modal syer dan semua transaksi projek direkodkan automatik.</CardDescription>
           </CardHeader>
           <CardContent><CoopEntryForm adminId={userId} /></CardContent>
         </Card>

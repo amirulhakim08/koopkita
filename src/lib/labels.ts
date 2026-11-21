@@ -15,42 +15,6 @@ export const REVIEW_STATUS: Record<string, { label: string; tone: Tone }> = {
   rejected: { label: "Ditolak", tone: "danger" },
 };
 
-export const SALE_STATUS: Record<string, { label: string; tone: Tone }> = {
-  draft: { label: "Draf", tone: "neutral" },
-  pending_payment: { label: "Menunggu Bayaran", tone: "warning" },
-  pending_review: { label: "Menunggu Semakan", tone: "info" },
-  approved: { label: "Diluluskan", tone: "success" },
-  rejected: { label: "Ditolak", tone: "danger" },
-  cancelled: { label: "Dibatalkan", tone: "neutral" },
-};
-
-export const SLOT_STATUS: Record<string, { label: string; tone: Tone }> = {
-  available: { label: "Tersedia", tone: "neutral" },
-  reserved: { label: "Ditempah", tone: "warning" },
-  confirmed: { label: "Disahkan", tone: "success" },
-  cancelled: { label: "Dibatalkan", tone: "danger" },
-};
-
-export const CAMPAIGN_STATUS: Record<string, { label: string; tone: Tone }> = {
-  draft: { label: "Draf", tone: "neutral" },
-  open: { label: "Dibuka", tone: "success" },
-  closed: { label: "Ditutup", tone: "warning" },
-  completed: { label: "Selesai", tone: "info" },
-};
-
-export const COMMISSION_TYPE: Record<string, { label: string; tone: Tone }> = {
-  standard: { label: "Komisen Biasa", tone: "success" },
-  full_cattle_incentive: { label: "Insentif Seekor Penuh", tone: "info" },
-  reversal: { label: "Pembalikan", tone: "danger" },
-  adjustment: { label: "Pelarasan", tone: "neutral" },
-};
-
-export const QURBAN_TYPE: Record<string, string> = {
-  korban_sunat: "Korban Sunat",
-  korban_nazar: "Korban Nazar",
-  aqiqah: "Aqiqah",
-};
-
 export const MALAYSIAN_STATES = [
   "Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sembilan", "Pahang", "Perak", "Perlis", "Pulau Pinang",
   "Sabah", "Sarawak", "Selangor", "Terengganu", "W.P. Kuala Lumpur", "W.P. Labuan", "W.P. Putrajaya",
@@ -62,16 +26,9 @@ export const MALAYSIAN_BANKS = [
   "OCBC Bank", "UOB Malaysia", "HSBC Bank Malaysia", "Standard Chartered", "Al Rajhi Bank", "Kuwait Finance House",
 ] as const;
 
-export const PAYOUT_REQUEST_STATUS: Record<string, { label: string; tone: Tone }> = {
-  pending: { label: "Sedang Diproses", tone: "warning" },
-  paid: { label: "Telah Dibayar", tone: "success" },
-  rejected: { label: "Ditolak", tone: "danger" },
-  cancelled: { label: "Dibatalkan", tone: "neutral" },
-};
-
 export const BUSINESSES: Record<string, string> = {
   umum: "Umum / Pentadbiran",
-  korban: "Korban",
+  pelaburan: "Pelaburan / Projek",
   pertanian: "Pertanian",
   pelancongan: "Pelancongan",
   lain_lain: "Lain-lain",
@@ -104,15 +61,57 @@ export const CASHBOOK_CATEGORIES: Record<string, string> = {
   ...FINANCE_OUT_CATEGORIES,
   modal_syer: "Modal syer",
   pelarasan_modal_syer: "Pelarasan modal syer",
-  bayaran_korban: "Bayaran korban",
-  bayaran_komisen: "Bayaran komisen",
+  modal_projek: "Modal projek ahli",
+  pelaburan_dihantar: "Pelaburan dihantar",
+  keuntungan_projek: "Keuntungan projek diterima",
+  modal_diterima_semula: "Modal diterima semula",
+  bayaran_dividen: "Bayaran dividen",
+  pemulangan_modal: "Pemulangan modal",
+  bayaran_balik_modal: "Bayaran balik modal",
 };
 
 export const CASHBOOK_SOURCES: Record<string, { label: string; tone: Tone }> = {
   manual: { label: "Rekod manual", tone: "neutral" },
   modal_syer: { label: "Modal syer", tone: "info" },
-  korban: { label: "Korban", tone: "success" },
-  komisen: { label: "Komisen", tone: "warning" },
+  projek_modal: { label: "Modal projek", tone: "success" },
+  projek_pelaburan: { label: "Pelaburan", tone: "warning" },
+  projek_keuntungan: { label: "Keuntungan", tone: "success" },
+  projek_modal_diterima: { label: "Modal kembali", tone: "success" },
+  projek_dividen: { label: "Dividen", tone: "warning" },
+  projek_pemulangan: { label: "Pemulangan modal", tone: "warning" },
+};
+
+export const PROJECT_STATUS: Record<string, { label: string; tone: Tone }> = {
+  draft: { label: "Draf", tone: "neutral" },
+  open: { label: "Dibuka", tone: "success" },
+  full: { label: "Penuh", tone: "info" },
+  active: { label: "Aktif", tone: "success" },
+  matured: { label: "Matang", tone: "info" },
+  completed: { label: "Selesai", tone: "neutral" },
+  cancelled: { label: "Dibatalkan", tone: "danger" },
+};
+
+export const PROJECT_CATEGORY: Record<string, string> = {
+  pelaburan: "Pelaburan",
+  pertanian: "Pertanian",
+  penternakan: "Penternakan",
+  perdagangan: "Perdagangan",
+  lain_lain: "Lain-lain",
+};
+
+export const DECLARATION_STATUS: Record<string, { label: string; tone: Tone }> = {
+  draft: { label: "Draf", tone: "neutral" },
+  declared: { label: "Diumumkan, menunggu wang", tone: "warning" },
+  received: { label: "Wang diterima", tone: "success" },
+  voided: { label: "Dibatalkan", tone: "danger" },
+};
+
+export const WITHDRAWAL_STATUS: Record<string, { label: string; tone: Tone }> = {
+  pending: { label: "Menunggu Semakan", tone: "warning" },
+  approved: { label: "Diluluskan", tone: "info" },
+  paid: { label: "Telah Dibayar", tone: "success" },
+  rejected: { label: "Ditolak", tone: "danger" },
+  cancelled: { label: "Dibatalkan", tone: "neutral" },
 };
 
 export const INVOICE_STATUS: Record<string, { label: string; tone: Tone }> = {

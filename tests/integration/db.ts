@@ -119,43 +119,37 @@ export async function configureBank(pool: Pool, adminId: string) {
   await asUser(pool, adminId, `select public.update_system_setting('coop_bank_name', '"Bank Ujian"'::jsonb)`);
 }
 
-export async function createOpenCampaign(pool: Pool, adminId: string, cattle = 3, year = 2026) {
-  const [{ id }] = await asUser<{ id: string }>(
-    pool, adminId,
-    `select public.save_campaign(null, $1, $2, current_date - 1, current_date + 30, 85000, 4000, 30000, 48, null) as id`,
-    [`Korban Ujian ${year}`, year],
-  );
-  await asUser(pool, adminId, `select public.add_cattle($1, $2, null)`, [id, cattle]);
-  await asUser(pool, adminId, `select public.set_campaign_status($1, 'open')`, [id]);
-  return id;
-}
-
 let idem = 0;
 export const key = (p = "k") => `${p}-${Date.now()}-${++idem}-${Math.random().toString(36).slice(2)}`;
 
-export async function createSale(pool: Pool, memberId: string, campaignId: string, shares: number) {
-  const participants = Array.from({ length: shares }, (_, i) => ({ participant_name: `Peserta ${i + 1}` }));
+type ProjectOpts = { target_sen?: number; min_sen?: number; step_sen?: number; max_per_member_sen?: number | null; name?: string };
+
+/** Super Admin creates and publishes a project (defaults: RM20,000 target, RM500 minimum and step). */
+export async function createOpenProject(pool: Pool, adminId: string, opts: ProjectOpts = {}) {
+  const data = {
+    name: opts.name ?? `Pelaburan Ujian ${++idem}`, partner: "KOPSYA", category: "pelaburan",
+    target_sen: opts.target_sen ?? 2000000, min_sen: opts.min_sen ?? 50000, step_sen: opts.step_sen ?? 50000,
+    max_per_member_sen: opts.max_per_member_sen ?? null, duration_months: 12,
+    terms: "Terma ujian: modal tidak dijamin.", risk_disclosure: "Pelaburan berisiko; pulangan lepas bukan jaminan.",
+  };
+  const [{ id }] = await asUser<{ id: string }>(pool, adminId, `select public.save_project(null, $1) as id`, [data]);
+  await asUser(pool, adminId, `select public.publish_project($1)`, [id]);
+  return id;
+}
+
+/** Member submits a contribution with a receipt; returns the participation id. */
+export async function joinProject(pool: Pool, memberId: string, projectId: string, amountSen: number, ref = `PRJ-${key()}`) {
+  const [{ v }] = await pool.query(`select terms_version v from public.projects where id = $1`, [projectId]).then((r) => r.rows);
   const [{ id }] = await asUser<{ id: string }>(
-    pool, memberId,
-    `select public.create_qurban_sale($1, $2, $3, $4, null, $5) as id`,
-    [campaignId, shares, { full_name: "Pembeli Ujian", phone: "0191234567" }, JSON.stringify(participants), key("sale")],
+    pool, memberId, `select public.join_project($1, $2, current_date, $3, $4, $5, $6) as id`,
+    [projectId, amountSen, ref, `${memberId}/prj-${++idem}.pdf`, v, key("join")],
   );
   return id;
 }
 
-/** Member pays in full, admin verifies and approves. */
-export async function payAndApprove(pool: Pool, adminId: string, memberId: string, saleId: string) {
-  const [{ total_sen }] = await pool.query(`select total_sen from public.qurban_sales where id = $1`, [saleId]).then((r) => r.rows);
-  const [{ id: payId }] = await asUser<{ id: string }>(
-    pool, memberId,
-    `select public.submit_sale_payment($1, $2, current_date, $3, $4, $5) as id`,
-    [saleId, total_sen, `REF-${key()}`, `${memberId}/receipt-${idem}.pdf`, key("pay")],
-  );
-  await asUser(pool, adminId, `select public.review_sale_payment($1, true, null)`, [payId]);
-  await asUser(pool, adminId, `select public.approve_qurban_sale($1, null)`, [saleId]);
-}
-
-export async function commissionTotal(pool: Pool, memberId: string) {
-  const { rows } = await pool.query(`select coalesce(sum(amount_sen),0)::int as s from public.commission_ledger where member_id = $1`, [memberId]);
-  return rows[0].s as number;
+/** Contribution submitted and approved. */
+export async function invest(pool: Pool, adminId: string, memberId: string, projectId: string, amountSen: number) {
+  const id = await joinProject(pool, memberId, projectId, amountSen);
+  await asUser(pool, adminId, `select public.review_project_participation($1, true, null)`, [id]);
+  return id;
 }

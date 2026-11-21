@@ -14,8 +14,8 @@ import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { adminUpdateMemberAction, approveMemberAction, rejectMemberAction, setSuspensionAction } from "@/features/members/actions";
 import { formatDateTime, formatIc, formatRM } from "@/lib/format";
-import { MALAYSIAN_STATES, MEMBER_STATUS, SALE_STATUS } from "@/lib/labels";
-import type { Profile } from "@/types/db";
+import { MALAYSIAN_STATES, MEMBER_STATUS, PROJECT_STATUS } from "@/lib/labels";
+import type { MemberProjectWallet, Profile } from "@/types/db";
 
 export const metadata = { title: "Butiran Ahli" };
 
@@ -27,13 +27,14 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
   const { data } = await supabase.from("profiles").select("*").eq("id", id).maybeSingle();
   if (!data) notFound();
   const m = data as Profile;
-  const [{ data: balance }, { data: commission }, { data: sales }, { data: application }] = await Promise.all([
+  const [{ data: balance }, { data: wallet }, { data: application }] = await Promise.all([
     supabase.from("v_share_balances").select("*").eq("member_id", id).maybeSingle(),
-    supabase.from("v_commission_summary").select("*").eq("member_id", id).maybeSingle(),
-    supabase.from("qurban_sales").select("id, sale_no, share_count, total_sen, status").eq("member_id", id).order("created_at", { ascending: false }).limit(10),
+    supabase.rpc("member_project_wallet", { p_member_id: id }),
     supabase.from("membership_applications").select("*").eq("user_id", id).order("submitted_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
   const self = id === adminId;
+  const projects = (wallet ?? []) as MemberProjectWallet[];
+  const total = (k: keyof MemberProjectWallet) => projects.reduce((t, p) => t + Number(p[k] ?? 0), 0);
 
   return (
     <>
@@ -71,19 +72,19 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>Jualan terkini</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Projek</CardTitle></CardHeader>
             <CardContent>
-              {sales?.length ? (
+              {projects.length ? (
                 <ul className="divide-y text-sm">
-                  {sales.map((s) => (
-                    <li key={s.id} className="flex items-center justify-between py-2">
-                      <Link href={`/admin/jualan/${s.id}`} className="font-medium text-primary hover:underline">{s.sale_no}</Link>
-                      <span>{s.share_count} bhg · {formatRM(s.total_sen)}</span>
-                      <StatusBadge map={SALE_STATUS} value={s.status} />
+                  {projects.map((p) => (
+                    <li key={p.project_id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                      <Link href={`/admin/projek/${p.project_id}`} className="font-medium text-primary hover:underline">{p.name}</Link>
+                      <span className="tabular-nums">Modal {formatRM(p.capital_sen)} · Dividen {formatRM(p.dividend_declared_sen)} · Tersedia {formatRM(p.available_sen)}</span>
+                      <StatusBadge map={PROJECT_STATUS} value={p.status} />
                     </li>
                   ))}
                 </ul>
-              ) : <p className="text-sm text-muted-foreground">Tiada jualan.</p>}
+              ) : <p className="text-sm text-muted-foreground">Belum menyertai projek.</p>}
             </CardContent>
           </Card>
         </div>
@@ -94,8 +95,9 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
             <CardContent className="space-y-2 text-sm">
               <p className="flex justify-between"><span className="text-muted-foreground">Modal syer</span><strong>{formatRM(balance?.approved_sen)}</strong></p>
               <p className="flex justify-between"><span className="text-muted-foreground">Syer menunggu</span><span>{formatRM(balance?.pending_sen)}</span></p>
-              <p className="flex justify-between"><span className="text-muted-foreground">Komisen diperoleh</span><span>{formatRM(commission?.earned_sen)}</span></p>
-              <p className="flex justify-between"><span className="text-muted-foreground">Komisen tertunggak</span><strong>{formatRM(commission?.outstanding_sen)}</strong></p>
+              <p className="flex justify-between"><span className="text-muted-foreground">Modal projek</span><strong>{formatRM(total("capital_sen"))}</strong></p>
+              <p className="flex justify-between"><span className="text-muted-foreground">Dividen projek</span><span>{formatRM(total("dividend_declared_sen"))}</span></p>
+              <p className="flex justify-between"><span className="text-muted-foreground">Dividen belum dibayar</span><strong>{formatRM(total("dividend_declared_sen") - total("withdrawn_sen"))}</strong></p>
               <p className="flex justify-between border-t pt-2"><span className="text-muted-foreground">Didaftar</span><span>{formatDateTime(m.created_at)}</span></p>
               <p className="flex justify-between"><span className="text-muted-foreground">E-mel disahkan</span><span>{formatDateTime(m.email_verified_at)}</span></p>
               <p className="flex justify-between"><span className="text-muted-foreground">Diluluskan</span><span>{formatDateTime(m.approved_at)}</span></p>

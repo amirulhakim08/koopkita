@@ -221,16 +221,6 @@ test("without a file share sheet (desktop browsers), Kongsi PDF offers download 
   expect((await download).suggestedFilename()).toMatch(/^Invois-INV-\d{6}001\.pdf$/);
 });
 
-test("official cooperative receipt PDF for an approved Qurban sale", async ({ page }) => {
-  await login(page, { email: "ahli1@koopkita.test", password: "DevAhli#2026" });
-  await page.goto("/ahli/korban");
-  await page.getByRole("link", { name: "QS-2027-00001" }).click();
-  await expect(page.getByText("Resit Rasmi Koperasi")).toBeVisible();
-  const res = await page.request.get(page.url().replace(/\/ahli\/korban\/jualan\//, "/api/korban/resit/"));
-  expect(res.status()).toBe(200);
-  expect(res.headers()["content-type"]).toBe("application/pdf");
-});
-
 test("catalogue: tick several items, confirm their prices once, and they fill Perkara 1, 2 …", async ({ page }) => {
   await login(page, { email: "ahli1@koopkita.test", password: "DevAhli#2026" });
   await page.goto("/ahli/bisnes/resit/baharu");

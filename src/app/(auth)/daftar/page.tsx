@@ -48,7 +48,7 @@ export default function RegisterPage() {
         </fieldset>
 
         <fieldset className="space-y-4">
-          <legend className="mb-2 text-sm font-semibold text-primary">Akaun bank (pilihan — diperlukan untuk menerima bayaran komisen)</legend>
+          <legend className="mb-2 text-sm font-semibold text-primary">Akaun bank (pilihan — diperlukan untuk menerima dividen projek)</legend>
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label="Nama bank" htmlFor="bank_name">
               <BankSelect />

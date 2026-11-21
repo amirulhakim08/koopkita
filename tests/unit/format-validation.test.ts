@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { formatDate, formatRM, maskIc, parseRMToSen, senToDecimal } from "@/lib/format";
 import { toCsv } from "@/lib/csv";
 import { parseDbError } from "@/lib/errors";
-import { icSchema, registerSchema, saleSchema, validateUpload } from "@/lib/validation";
+import { icSchema, registerSchema, validateUpload } from "@/lib/validation";
 
 describe("money", () => {
   it("formats sen as Malaysian ringgit", () => {
@@ -48,14 +48,6 @@ describe("validation", () => {
     expect(registerSchema.safeParse({ ...base, confirm_password: "x" }).success).toBe(false);
     expect(registerSchema.safeParse({ ...base, password: "short" }).success).toBe(false);
     expect(registerSchema.safeParse({ ...base, consent: undefined }).success).toBe(false);
-  });
-  it("requires one participant per share", () => {
-    const sale = {
-      campaign_id: crypto.randomUUID(), share_count: 2, buyer_full_name: "Pembeli", buyer_phone: "0123456789",
-      participants: [{ participant_name: "A" + "b" }], idempotency_key: crypto.randomUUID(),
-    };
-    expect(saleSchema.safeParse(sale).success).toBe(false);
-    expect(saleSchema.safeParse({ ...sale, participants: [{ participant_name: "Ab" }, { participant_name: "Cd" }] }).success).toBe(true);
   });
   it("restricts upload types and sizes", () => {
     expect(validateUpload({ type: "application/pdf", size: 1000 })).toBeNull();

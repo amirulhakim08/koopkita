@@ -1,13 +1,12 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatDate, formatDateTime, maskIc, senToDecimal } from "@/lib/format";
-import { BUSINESSES, CASHBOOK_CATEGORIES, CASHBOOK_SOURCES, COMMISSION_TYPE, MEMBER_STATUS, QURBAN_TYPE, REVIEW_STATUS, SALE_STATUS, SLOT_STATUS, CAMPAIGN_STATUS } from "@/lib/labels";
+import { BUSINESSES, CASHBOOK_CATEGORIES, CASHBOOK_SOURCES, DECLARATION_STATUS, MEMBER_STATUS, PROJECT_STATUS, REVIEW_STATUS, WITHDRAWAL_STATUS } from "@/lib/labels";
 
 type Cell = string | number | null | undefined;
 export type Report = { title: string; description: string; build: (sb: SupabaseClient, params: URLSearchParams) => Promise<{ headers: string[]; rows: Cell[][] }> };
 
 const label = (m: Record<string, { label: string }>, v: string) => m[v]?.label ?? v;
-type Rel<T> = T | null;
 
 export const REPORTS: Record<string, Report> = {
   "bisnes-ahli": {
@@ -30,7 +29,7 @@ export const REPORTS: Record<string, Report> = {
   },
   "buku-tunai": {
     title: "Buku tunai koperasi",
-    description: "Semua wang masuk dan keluar: modal syer, korban, komisen dan rekod manual (pengeluaran, perbelanjaan, perniagaan lain). Parameter: ?dari=YYYY-MM-DD&hingga=YYYY-MM-DD",
+    description: "Semua wang masuk dan keluar: modal syer, projek dan rekod manual (pengeluaran, perbelanjaan, perniagaan lain). Parameter: ?dari=YYYY-MM-DD&hingga=YYYY-MM-DD",
     async build(sb, params) {
       const d = (k: string) => (/^\d{4}-\d{2}-\d{2}$/.test(params.get(k) ?? "") ? params.get(k) : null);
       const { data } = await sb.rpc("admin_cashbook", { p_from: d("dari"), p_to: d("hingga"), p_limit: 10000 });
@@ -79,137 +78,78 @@ export const REPORTS: Record<string, Report> = {
       };
     },
   },
-  kempen: {
-    title: "Laporan kempen korban",
-    description: "Ringkasan setiap kempen: lembu, slot dan hasil jualan diluluskan.",
+  projek: {
+    title: "Laporan projek",
+    description: "Setiap projek: sasaran, modal terkumpul, pelaburan, keuntungan, bahagian koperasi, dividen ahli dan pemulangan modal.",
     async build(sb) {
-      const [{ data: c }, { data: sales }] = await Promise.all([
-        sb.from("v_campaign_progress").select("*").order("year"),
-        sb.from("qurban_sales").select("campaign_id, total_sen, share_count").eq("status", "approved"),
+      const [{ data: projects }, { data: progress }, { data: decls }, { data: wds }, { data: returns }] = await Promise.all([
+        sb.from("projects").select("*").order("created_at"),
+        sb.rpc("project_progress"),
+        sb.from("project_profit_declarations").select("project_id, status, gross_sen, fee_sen, member_total_sen, coop_total_sen"),
+        sb.from("project_withdrawals").select("project_id, amount_sen").eq("status", "paid"),
+        sb.from("project_capital_returns").select("project_id, amount_sen, reverses_id"),
       ]);
-      const rev = new Map<string, number>();
-      for (const s of sales ?? []) rev.set(s.campaign_id, (rev.get(s.campaign_id) ?? 0) + Number(s.total_sen));
+      const prog = new Map(((progress ?? []) as { project_id: string; approved_sen: number; participants: number }[]).map((x) => [x.project_id, x]));
+      const add = (m: Map<string, number>, k: string, v: number) => m.set(k, (m.get(k) ?? 0) + v);
+      const profit = new Map<string, number>(), member = new Map<string, number>(), coop = new Map<string, number>(), paid = new Map<string, number>(), back = new Map<string, number>();
+      for (const d of decls ?? []) if (d.status === "received") { add(profit, d.project_id, Number(d.gross_sen) - Number(d.fee_sen)); add(member, d.project_id, Number(d.member_total_sen)); add(coop, d.project_id, Number(d.coop_total_sen)); }
+      for (const w of wds ?? []) add(paid, w.project_id, Number(w.amount_sen));
+      for (const r of returns ?? []) add(back, r.project_id, r.reverses_id ? -Number(r.amount_sen) : Number(r.amount_sen));
       return {
-        headers: ["Kempen", "Tahun", "Status", "Lembu", "Jumlah Slot", "Disahkan", "Ditempah", "Tersedia", "Dibatalkan", "Hasil Diluluskan (RM)"],
-        rows: (c ?? []).map((x) => [x.name, x.year, label(CAMPAIGN_STATUS, x.status), x.cattle_count, x.total_slots, x.confirmed_slots, x.reserved_slots,
-          x.available_slots, x.cancelled_slots, senToDecimal(rev.get(x.campaign_id) ?? 0)]),
+        headers: ["Kod", "Projek", "Organisasi", "Status", "Sasaran (RM)", "Minimum (RM)", "Gandaan (RM)", "Modal Diluluskan (RM)", "Peserta",
+          "Dilaburkan (RM)", "Tarikh Labur", "Keuntungan Diterima (RM)", "Bahagian Koperasi (RM)", "Dividen Ahli (RM)", "Dividen Dibayar (RM)",
+          "Modal Diterima Semula (RM)", "Modal Dipulangkan (RM)"],
+        rows: (projects ?? []).map((p) => [p.code, p.name, p.partner, label(PROJECT_STATUS, p.status), senToDecimal(p.target_sen), senToDecimal(p.min_sen),
+          senToDecimal(p.step_sen), senToDecimal(prog.get(p.id)?.approved_sen ?? 0), Number(prog.get(p.id)?.participants ?? 0),
+          p.invested_sen == null ? "" : senToDecimal(p.invested_sen), formatDate(p.invested_on), senToDecimal(profit.get(p.id) ?? 0),
+          senToDecimal(coop.get(p.id) ?? 0), senToDecimal(member.get(p.id) ?? 0), senToDecimal(paid.get(p.id) ?? 0),
+          p.capital_received_sen == null ? "" : senToDecimal(p.capital_received_sen), senToDecimal(back.get(p.id) ?? 0)]),
       };
     },
   },
-  "peruntukan-lembu": {
-    title: "Laporan peruntukan lembu",
-    description: "Setiap slot lembu dengan jualan, peserta dan ahli penjual.",
-    async build(sb, params) {
-      let q = sb.from("cattle_slots")
-        .select("slot_no, status, cattle!inner(code, seq, campaign_id, campaigns(name)), qurban_sales!cattle_slots_sale_id_fkey(sale_no, profiles!qurban_sales_member_id_fkey(full_name, membership_id)), qurban_participants(participant_name, qurban_type, on_behalf_of)")
-        .order("slot_no");
-      const k = params.get("kempen");
-      if (k && /^[0-9a-f-]{36}$/.test(k)) q = q.eq("cattle.campaign_id", k);
-      const { data } = await q.limit(10000);
-      const rows = (data ?? []).map((s) => {
-        const cattle = s.cattle as unknown as { code: string; seq: number; campaigns: Rel<{ name: string }> };
-        const sale = s.qurban_sales as unknown as Rel<{ sale_no: string; profiles: Rel<{ full_name: string; membership_id: string }> }>;
-        const p = (s.qurban_participants as unknown as { participant_name: string; qurban_type: string; on_behalf_of: string | null }[])?.[0];
-        return { key: `${cattle.code}-${String(s.slot_no).padStart(2, "0")}`, row: [cattle.campaigns?.name, cattle.code, s.slot_no, label(SLOT_STATUS, s.status), sale?.sale_no,
-          p?.participant_name, p ? QURBAN_TYPE[p.qurban_type] : "", p?.on_behalf_of, sale?.profiles?.full_name, sale?.profiles?.membership_id] as Cell[] };
-      }).sort((a, b) => a.key.localeCompare(b.key));
-      return { headers: ["Kempen", "ID Lembu", "Slot", "Status", "No. Jualan", "Peserta", "Jenis", "Bagi Pihak", "Ahli Penjual", "No. Ahli"], rows: rows.map((r) => r.row) };
+  "penyertaan-projek": {
+    title: "Penyertaan projek",
+    description: "Setiap bayaran penyertaan ahli dengan status semakan dan versi terma yang dipersetujui.",
+    async build(sb) {
+      const { data } = await sb.from("project_participations")
+        .select("*, project:projects(code, name), member:profiles!project_participations_member_id_fkey(full_name, membership_id)").order("created_at");
+      return {
+        headers: ["Dihantar", "Kod Projek", "Projek", "No. Ahli", "Ahli", "Jumlah (RM)", "Tarikh Bayar", "Rujukan Bank", "Versi Terma", "Disyaki Pendua", "Status", "Disemak", "Catatan"],
+        rows: (data ?? []).map((x) => [formatDateTime(x.created_at), x.project?.code, x.project?.name, x.member?.membership_id, x.member?.full_name,
+          senToDecimal(x.amount_sen), formatDate(x.payment_date), x.transaction_ref, x.terms_version, x.duplicate_flag ? "Ya" : "",
+          label(REVIEW_STATUS, x.status), formatDateTime(x.reviewed_at), x.review_notes]),
+      };
     },
   },
-  pembeli: {
-    title: "Laporan pembeli & peserta",
-    description: "Pembeli dan peserta korban bagi setiap jualan (data peribadi — kendalikan dengan berhati-hati).",
+  "dividen-projek": {
+    title: "Agihan dividen projek",
+    description: "Agihan keuntungan setiap ahli bagi setiap pengumuman: modal, kadar, dividen ahli dan bahagian koperasi.",
     async build(sb) {
-      const { data } = await sb.from("qurban_participants")
-        .select("position, participant_name, qurban_type, on_behalf_of, slot_code_snapshot, cattle_slots(slot_no, cattle(code)), qurban_sales!inner(sale_no, status, buyers(full_name, phone, email), campaigns(name), profiles!qurban_sales_member_id_fkey(full_name))")
+      const { data } = await sb.from("project_profit_allocations")
+        .select("*, project:projects(code, name), member:profiles!project_profit_allocations_member_id_fkey(full_name, membership_id), declaration:project_profit_declarations(period_label, rate_bp, coop_rate_bp, status, received_on)")
         .order("created_at");
       return {
-        headers: ["Kempen", "No. Jualan", "Status Jualan", "Pembeli", "Telefon Pembeli", "E-mel Pembeli", "Peserta", "Jenis", "Bagi Pihak", "Lembu/Slot", "Ahli Penjual"],
-        rows: (data ?? []).map((p) => {
-          const s = p.qurban_sales as unknown as { sale_no: string; status: string; buyers: Rel<{ full_name: string; phone: string; email: string | null }>; campaigns: Rel<{ name: string }>; profiles: Rel<{ full_name: string }> };
-          const slot = p.cattle_slots as unknown as Rel<{ slot_no: number; cattle: { code: string } }>;
-          return [s.campaigns?.name, s.sale_no, label(SALE_STATUS, s.status), s.buyers?.full_name, s.buyers?.phone, s.buyers?.email, p.participant_name,
-            QURBAN_TYPE[p.qurban_type], p.on_behalf_of, slot ? `${slot.cattle.code}/${slot.slot_no}` : p.slot_code_snapshot, s.profiles?.full_name];
-        }),
+        headers: ["Kod Projek", "Projek", "Tempoh", "Status Pengumuman", "Tarikh Wang Diterima", "No. Ahli", "Ahli", "Modal (RM)", "Kadar Diumumkan (%)",
+          "Bahagian Koperasi (mata %)", "Dividen Ahli (RM)", "Bahagian Koperasi (RM)"],
+        rows: (data ?? []).map((a) => [a.project?.code, a.project?.name, a.declaration?.period_label, label(DECLARATION_STATUS, a.declaration?.status ?? ""),
+          formatDate(a.declaration?.received_on), a.member?.membership_id, a.member?.full_name, senToDecimal(a.capital_sen),
+          (Number(a.declaration?.rate_bp ?? 0) / 100).toFixed(2), (Number(a.declaration?.coop_rate_bp ?? 0) / 100).toFixed(2),
+          senToDecimal(a.amount_sen), senToDecimal(a.coop_sen)]),
       };
     },
   },
-  jualan: {
-    title: "Laporan jualan",
-    description: "Semua jualan korban dengan ahli, pembeli, jumlah dan status.",
+  "pengeluaran-dividen": {
+    title: "Pengeluaran dividen",
+    description: "Semua permohonan pengeluaran dividen dengan akaun bank, status dan rujukan pindahan.",
     async build(sb) {
-      const { data } = await sb.from("qurban_sales")
-        .select("*, campaigns(name), buyers(full_name, phone), profiles!qurban_sales_member_id_fkey(full_name, membership_id)")
-        .order("created_at");
+      const { data } = await sb.from("project_withdrawals")
+        .select("*, project:projects(code, name), member:profiles!project_withdrawals_member_id_fkey(full_name, membership_id)").order("created_at");
       return {
-        headers: ["No. Jualan", "Kempen", "No. Ahli", "Ahli", "Pembeli", "Telefon", "Bahagian", "Harga Sebahagian (RM)", "Jumlah (RM)", "Status", "Tarikh", "Tarikh Semakan"],
-        rows: (data ?? []).map((s) => [s.sale_no, s.campaigns?.name, s.profiles?.membership_id, s.profiles?.full_name, s.buyers?.full_name, s.buyers?.phone,
-          s.share_count, senToDecimal(s.price_per_share_sen), senToDecimal(s.total_sen), label(SALE_STATUS, s.status), formatDate(s.created_at), formatDate(s.reviewed_at)]),
+        headers: ["No.", "Dipohon", "Kod Projek", "Projek", "No. Ahli", "Ahli", "Jumlah (RM)", "Bank", "No. Akaun", "Pemegang Akaun", "Status", "Tarikh Bayar", "Rujukan Pindahan", "Catatan"],
+        rows: (data ?? []).map((w) => [w.withdrawal_no, formatDateTime(w.created_at), w.project?.code, w.project?.name, w.member?.membership_id, w.member?.full_name,
+          senToDecimal(w.amount_sen), w.bank_name, w.bank_account_no, w.bank_account_holder, label(WITHDRAWAL_STATUS, w.status), formatDate(w.paid_on),
+          w.transaction_ref, w.review_notes]),
       };
-    },
-  },
-  "jualan-ahli": {
-    title: "Jualan mengikut ahli",
-    description: "Jumlah bahagian dan nilai jualan diluluskan bagi setiap ahli.",
-    async build(sb) {
-      const { data } = await sb.from("qurban_sales").select("share_count, total_sen, profiles!qurban_sales_member_id_fkey(full_name, membership_id)").eq("status", "approved");
-      const agg = new Map<string, { name: string; id: string; shares: number; sales: number; total: number }>();
-      for (const s of data ?? []) {
-        const p = s.profiles as unknown as { full_name: string; membership_id: string };
-        const a = agg.get(p.membership_id) ?? { name: p.full_name, id: p.membership_id, shares: 0, sales: 0, total: 0 };
-        a.shares += s.share_count; a.sales += 1; a.total += Number(s.total_sen);
-        agg.set(p.membership_id, a);
-      }
-      return {
-        headers: ["No. Ahli", "Nama", "Bil. Jualan", "Bahagian", "Nilai Jualan (RM)"],
-        rows: [...agg.values()].sort((a, b) => b.shares - a.shares).map((a) => [a.id, a.name, a.sales, a.shares, senToDecimal(a.total)]),
-      };
-    },
-  },
-  komisen: {
-    title: "Laporan komisen",
-    description: "Lejar komisen lengkap termasuk insentif seekor penuh dan pembalikan.",
-    async build(sb) {
-      const { data } = await sb.from("commission_ledger").select("*, profiles!commission_ledger_member_id_fkey(full_name, membership_id), qurban_sales(sale_no)").order("created_at");
-      return {
-        headers: ["Tarikh", "No. Ahli", "Ahli", "Jenis", "No. Jualan", "Bahagian", "Jumlah (RM)", "Keterangan"],
-        rows: (data ?? []).map((e) => [formatDateTime(e.created_at), e.profiles?.membership_id, e.profiles?.full_name, label(COMMISSION_TYPE, e.entry_type),
-          e.qurban_sales?.sale_no, e.share_count, senToDecimal(e.amount_sen), e.description]),
-      };
-    },
-  },
-  "bayaran-komisen": {
-    title: "Laporan bayaran komisen",
-    description: "Semua bayaran komisen yang direkodkan (termasuk pembalikan).",
-    async build(sb) {
-      const { data } = await sb.from("commission_payouts").select("*, member:profiles!commission_payouts_member_id_fkey(full_name, membership_id)").order("created_at");
-      return {
-        headers: ["No. Bayaran", "No. Ahli", "Ahli", "Tarikh Pindahan", "Rujukan Bank", "Jumlah (RM)", "Pembalikan?", "Catatan", "Direkod"],
-        rows: (data ?? []).map((p) => [p.payout_no, p.member?.membership_id, p.member?.full_name, formatDate(p.payment_date), p.transaction_ref,
-          senToDecimal(p.amount_sen), p.reverses_id ? "Ya" : "", p.notes, formatDateTime(p.created_at)]),
-      };
-    },
-  },
-  tertunggak: {
-    title: "Bayaran tertunggak",
-    description: "Jualan yang belum dibayar penuh oleh pelanggan, dan komisen ahli yang belum dibayar.",
-    async build(sb) {
-      const [{ data: sales }, { data: pays }, { data: comm }] = await Promise.all([
-        sb.from("qurban_sales").select("id, sale_no, total_sen, status, reservation_expires_at, profiles!qurban_sales_member_id_fkey(full_name, membership_id), buyers(full_name, phone)").in("status", ["pending_payment", "pending_review"]),
-        sb.from("payment_submissions").select("sale_id, amount_sen, status").eq("status", "verified"),
-        sb.from("v_commission_summary").select("*").gt("outstanding_sen", 0),
-      ]);
-      const verified = new Map<string, number>();
-      for (const p of pays ?? []) verified.set(p.sale_id, (verified.get(p.sale_id) ?? 0) + Number(p.amount_sen));
-      const rows: Cell[][] = (sales ?? []).map((s) => {
-        const m = s.profiles as unknown as { full_name: string; membership_id: string };
-        const b = s.buyers as unknown as { full_name: string; phone: string };
-        const v = verified.get(s.id) ?? 0;
-        return ["Bayaran pelanggan", s.sale_no, m?.membership_id, m?.full_name, `${b?.full_name} (${b?.phone})`, senToDecimal(s.total_sen), senToDecimal(v),
-          senToDecimal(Number(s.total_sen) - v), `${label(SALE_STATUS, s.status)}${s.reservation_expires_at ? ` · tamat ${formatDateTime(s.reservation_expires_at)}` : ""}`];
-      });
-      for (const c of comm ?? []) rows.push(["Komisen ahli", "", c.membership_id, c.full_name, "", senToDecimal(c.earned_sen), senToDecimal(c.paid_sen), senToDecimal(c.outstanding_sen), ""]);
-      return { headers: ["Kategori", "No. Jualan", "No. Ahli", "Ahli", "Pembeli", "Jumlah (RM)", "Diterima/Dibayar (RM)", "Baki (RM)", "Status"], rows };
     },
   },
 };
