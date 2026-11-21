@@ -1,7 +1,5 @@
 import Link from "next/link";
-import {
-  AlertCircle, Briefcase, Building2, Clock, Coins, HandCoins, Landmark, PiggyBank, TrendingUp, UserCheck, UserPlus, Users, Wallet,
-} from "lucide-react";
+import { AlertCircle, Briefcase, Building2, Clock, Coins, HandCoins, Landmark, TrendingUp, UserCheck, UserPlus, Users, Wallet, Banknote } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -88,7 +86,7 @@ export default async function AdminDashboard() {
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard label="Jumlah projek" value={s.projects_total} hint={`${s.projects_open} dibuka · ${s.projects_active} berjalan`} icon={Briefcase} />
         <StatCard label="Jumlah sasaran modal" value={formatRM(s.project_target_sen)} icon={Building2} />
-        <StatCard emphasis label="Modal berjaya dikumpul" value={formatRM(s.project_capital_sen)} icon={PiggyBank} />
+        <StatCard emphasis label="Modal berjaya dikumpul" value={formatRM(s.project_capital_sen)} icon={Banknote} />
         <StatCard label="Modal aktif dilaburkan" value={formatRM(s.active_capital_sen)} icon={Landmark} />
         <StatCard label="Keuntungan diumumkan" value={formatRM(s.profit_declared_sen)} icon={TrendingUp} />
         <StatCard label="Keuntungan diterima koperasi" value={formatRM(s.profit_received_sen)} hint={`Milik koperasi ${formatRM(s.coop_profit_sen)}`} icon={Coins} />
