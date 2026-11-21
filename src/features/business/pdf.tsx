@@ -1,9 +1,9 @@
 import "server-only";
 import { Document, Image, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
-import { formatDate, formatDateTime, formatRM, senToDecimal } from "@/lib/format";
-import { PAYMENT_METHODS, QURBAN_TYPE } from "@/lib/labels";
+import { formatDate, formatRM, senToDecimal } from "@/lib/format";
+import { PAYMENT_METHODS } from "@/lib/labels";
 import { logoUrl } from "@/lib/storage-url";
-import type { CoopReceiptJson, DocumentJson } from "./types";
+import type { DocumentJson } from "./types";
 
 const GREEN = "#1b4332";
 const MUTED = "#5c6b62";
@@ -224,76 +224,9 @@ function BusinessDoc({ doc, logo }: { doc: DocumentJson; logo: Awaited<ReturnTyp
   );
 }
 
-function CoopReceiptDoc({ r, logo }: { r: CoopReceiptJson; logo: Awaited<ReturnType<typeof loadLogo>> }) {
-  return (
-    <Document title={`Resit Rasmi ${r.sale_no}`} author={r.coop.name} creator="KoopKITA">
-      <Page size="A4" style={s.page}>
-        <View style={s.head}>
-          <View style={s.brand}>
-            {/* eslint-disable-next-line jsx-a11y/alt-text */}
-            {logo && <Image style={s.logo} src={logo} />}
-            <View>
-              <Text style={s.bizName}>{r.coop.name}</Text>
-              {r.coop.reg_no && <Text style={s.small}>No. Pendaftaran: {r.coop.reg_no}</Text>}
-              {r.coop.address && <Text style={s.small}>{r.coop.address}</Text>}
-              {(r.coop.phone || r.coop.email) && <Text style={s.small}>{[r.coop.phone && `Tel: ${r.coop.phone}`, r.coop.email].filter(Boolean).join("  ·  ")}</Text>}
-            </View>
-          </View>
-          <View>
-            <Text style={s.docTitle}>RESIT RASMI</Text>
-            <Text style={s.docNo}>{r.sale_no}</Text>
-            <Stamp text="DIBAYAR" color="#2d6a4f" />
-          </View>
-        </View>
-        <View style={s.metaRow}>
-          <View style={s.box}>
-            <Text style={s.label}>Diterima daripada</Text>
-            <Text style={s.bold}>{r.buyer.name}</Text>
-            <Text style={s.small}>{[r.buyer.phone, r.buyer.email].filter(Boolean).join("  ·  ")}</Text>
-            {r.buyer.address && <Text style={s.small}>{r.buyer.address}</Text>}
-          </View>
-          <View style={s.box}>
-            <Text style={s.label}>Butiran</Text>
-            <Text>Kempen: {r.campaign}</Text>
-            <Text>Tarikh diluluskan: {formatDateTime(r.approved_at)}</Text>
-            <Text>Ahli penjual: {r.seller.name}{r.seller.membership_id ? ` (${r.seller.membership_id})` : ""}</Text>
-          </View>
-        </View>
-        <View style={s.table}>
-          <View style={[s.tr, s.th]}><Text style={{ width: 22 }}>#</Text><Text style={s.cDesc}>Peserta korban</Text><Text style={{ width: 90 }}>Jenis</Text><Text style={{ width: 120 }}>Lembu / slot</Text></View>
-          {r.participants.map((pt, i) => (
-            <View key={i} style={s.tr} wrap={false}>
-              <Text style={{ width: 22 }}>{i + 1}</Text>
-              <Text style={s.cDesc}>{pt.name}{pt.on_behalf_of ? ` (bagi pihak ${pt.on_behalf_of})` : ""}</Text>
-              <Text style={{ width: 90 }}>{QURBAN_TYPE[pt.qurban_type] ?? pt.qurban_type}</Text>
-              <Text style={{ width: 120 }}>{pt.slot ?? "-"}</Text>
-            </View>
-          ))}
-        </View>
-        <View style={s.totals}>
-          <View style={s.totRow}><Text>{r.share_count} bahagian × {formatRM(r.price_per_share_sen)}</Text><Text>{formatRM(r.total_sen)}</Text></View>
-          <View style={[s.totRow, s.grand]}><Text>Jumlah dibayar</Text><Text>{formatRM(r.payments.reduce((a, x) => a + Number(x.amount_sen), 0))}</Text></View>
-        </View>
-        {r.payments.length > 0 && (
-          <View style={{ marginTop: 14 }}>
-            <Text style={s.label}>Bayaran diterima</Text>
-            {r.payments.map((x, i) => <Text key={i} style={s.small}>{formatDate(x.payment_date)} · {formatRM(x.amount_sen)} · Rujukan {x.reference}</Text>)}
-          </View>
-        )}
-        <Text style={s.foot} fixed>Resit rasmi ini dijana oleh komputer dan tidak memerlukan tandatangan · {r.coop.name}</Text>
-      </Page>
-    </Document>
-  );
-}
-
 export async function renderBusinessPdf(doc: DocumentJson): Promise<Buffer> {
   const logo = await loadLogo(doc.invoice.business.logo_path);
   return renderToBuffer(<BusinessDoc doc={doc} logo={logo} />);
-}
-
-export async function renderCoopReceiptPdf(r: CoopReceiptJson): Promise<Buffer> {
-  const logo = await loadLogo(r.coop.logo_path);
-  return renderToBuffer(<CoopReceiptDoc r={r} logo={logo} />);
 }
 
 export function documentFileName(doc: DocumentJson): string {

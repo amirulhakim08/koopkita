@@ -3,9 +3,7 @@
 export type MemberStatus = "pending_verification" | "pending_approval" | "active" | "rejected" | "suspended";
 export type Role = "member" | "super_admin";
 export type ReviewStatus = "pending" | "approved" | "rejected";
-export type SaleStatus = "draft" | "pending_payment" | "pending_review" | "approved" | "rejected" | "cancelled";
-export type SlotStatus = "available" | "reserved" | "confirmed" | "cancelled";
-export type CampaignStatus = "draft" | "open" | "closed" | "completed";
+export type ProjectStatus = "draft" | "open" | "full" | "active" | "matured" | "completed" | "cancelled";
 
 export interface Profile {
   id: string;
@@ -46,80 +44,153 @@ export interface ShareTransaction {
   created_at: string;
 }
 
-export interface Campaign {
+export interface Project {
   id: string;
+  code: string;
   name: string;
-  year: number;
-  start_date: string;
-  closing_date: string;
-  shares_per_cattle: number;
-  price_per_share_sen: number;
-  commission_per_share_sen: number;
-  full_cattle_commission_sen: number;
-  reservation_expiry_hours: number;
-  status: CampaignStatus;
+  partner: string;
+  category: string;
   description: string | null;
-  created_at: string;
-}
-
-export interface QurbanSale {
-  id: string;
-  sale_no: string;
-  campaign_id: string;
-  member_id: string;
-  buyer_id: string;
-  share_count: number;
-  price_per_share_sen: number;
-  total_sen: number;
-  status: SaleStatus;
-  notes: string | null;
-  reservation_expires_at: string | null;
-  submitted_at: string | null;
-  reviewed_at: string | null;
-  review_notes: string | null;
+  risk_disclosure: string | null;
+  terms: string | null;
+  terms_version: number;
+  document_path: string | null;
+  target_sen: number;
+  min_sen: number;
+  step_sen: number;
+  max_per_member_sen: number | null;
+  open_date: string | null;
+  close_date: string | null;
+  duration_months: number | null;
+  maturity_date: string | null;
+  coop_threshold_bp: number;
+  coop_cap_bp: number;
+  status: ProjectStatus;
+  published_at: string | null;
+  invested_on: string | null;
+  invested_sen: number | null;
+  investment_ref: string | null;
+  investment_proof_path: string | null;
+  matured_on: string | null;
+  capital_received_sen: number | null;
+  capital_received_ref: string | null;
+  capital_received_proof_path: string | null;
+  completed_at: string | null;
   cancelled_at: string | null;
   cancel_reason: string | null;
   created_at: string;
 }
 
-export interface PaymentSubmission {
+export interface ProjectProgress {
+  project_id: string;
+  approved_sen: number;
+  pending_sen: number;
+  available_sen: number;
+  participants: number;
+  pending_count: number;
+}
+
+export interface ProjectParticipation {
   id: string;
-  sale_id: string;
+  project_id: string;
+  member_id: string;
   amount_sen: number;
   payment_date: string;
   transaction_ref: string;
   receipt_path: string;
-  status: "pending" | "verified" | "rejected";
+  terms_version: number;
+  terms_accepted_at: string;
   duplicate_flag: boolean;
   duplicate_reason: string | null;
+  status: ReviewStatus;
   review_notes: string | null;
+  reviewed_at: string | null;
   created_at: string;
 }
 
-export interface CommissionEntry {
+export interface ProfitDeclaration {
   id: string;
-  member_id: string;
-  sale_id: string | null;
-  cattle_id: string | null;
-  entry_type: "standard" | "full_cattle_incentive" | "reversal" | "adjustment";
-  amount_sen: number;
-  share_count: number | null;
-  description: string;
-  reverses_id: string | null;
+  project_id: string;
+  period_label: string;
+  period_start: string | null;
+  period_end: string | null;
+  announced_on: string;
+  rate_bp: number;
+  gross_sen: number;
+  fee_sen: number;
+  fee_description: string | null;
+  coop_rate_bp: number;
+  capital_sen: number | null;
+  member_total_sen: number | null;
+  coop_total_sen: number | null;
+  document_path: string | null;
+  notes: string | null;
+  status: "draft" | "declared" | "received" | "voided";
+  declared_at: string | null;
+  received_on: string | null;
+  voided_at: string | null;
+  void_reason: string | null;
   created_at: string;
 }
 
-export interface CommissionPayout {
+export interface ProfitAllocation {
   id: string;
-  payout_no: string;
+  declaration_id: string;
+  project_id: string;
+  member_id: string;
+  capital_sen: number;
+  amount_sen: number;
+  coop_sen: number;
+  created_at: string;
+}
+
+export interface ProjectWithdrawal {
+  id: string;
+  withdrawal_no: string;
+  project_id: string;
   member_id: string;
   amount_sen: number;
-  payment_date: string;
+  bank_name: string;
+  bank_account_no: string;
+  bank_account_holder: string;
+  notes: string | null;
+  status: "pending" | "approved" | "paid" | "rejected" | "cancelled";
+  review_notes: string | null;
+  reviewed_at: string | null;
+  paid_on: string | null;
+  transaction_ref: string | null;
+  proof_path: string | null;
+  created_at: string;
+}
+
+export interface CapitalReturn {
+  id: string;
+  project_id: string;
+  member_id: string;
+  kind: "return" | "refund";
+  amount_sen: number;
+  paid_on: string;
   transaction_ref: string;
   proof_path: string | null;
   notes: string | null;
   reverses_id: string | null;
   created_at: string;
+}
+
+export interface MemberProjectWallet {
+  project_id: string;
+  code: string;
+  name: string;
+  partner: string;
+  status: ProjectStatus;
+  capital_sen: number;
+  pending_capital_sen: number;
+  capital_returned_sen: number;
+  dividend_declared_sen: number;
+  dividend_received_sen: number;
+  withdrawal_pending_sen: number;
+  withdrawn_sen: number;
+  available_sen: number;
 }
 
 export interface Notification {

@@ -11,7 +11,7 @@ export async function sendAnnouncementAction(_prev: ActionState, formData: FormD
   const schema = z.object({
     title: z.string().trim().min(3, "Tajuk diperlukan").max(150),
     body: z.string().trim().min(3, "Mesej diperlukan").max(2000),
-    link: z.preprocess((v) => (v === "" ? undefined : v), z.string().regex(/^\/[A-Za-z0-9/_-]*$/, "Pautan dalaman sahaja (cth. /ahli/korban)").optional()),
+    link: z.preprocess((v) => (v === "" ? undefined : v), z.string().regex(/^\/[A-Za-z0-9/_-]*$/, "Pautan dalaman sahaja (cth. /ahli/projek)").optional()),
     target: z.enum(["all", "selected"]),
     user_ids: z.array(z.string().uuid()).max(5000),
   });

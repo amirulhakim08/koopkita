@@ -20,12 +20,3 @@ export type DocumentJson = {
     reversed: boolean; reverse_reason: string | null; share_token: string; balance_after_sen: number;
   };
 };
-
-export type CoopReceiptJson = {
-  sale_no: string; approved_at: string; share_count: number; price_per_share_sen: number; total_sen: number; campaign: string;
-  buyer: { name: string; phone: string; email: string | null; address: string | null };
-  seller: { name: string; membership_id: string | null };
-  participants: { name: string; qurban_type: string; on_behalf_of: string | null; slot: string | null }[];
-  payments: { amount_sen: number; payment_date: string; reference: string }[];
-  coop: { name: string; reg_no: string | null; address: string | null; phone: string | null; email: string | null; logo_path: string | null };
-};

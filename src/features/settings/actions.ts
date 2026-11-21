@@ -1,5 +1,5 @@
 "use server";
-import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { fail, type ActionState } from "@/lib/errors";
 import { parseRMToSen } from "@/lib/format";
 import { callRpc } from "@/lib/rpc";
@@ -25,14 +25,13 @@ export async function saveSettingsAction(_prev: ActionState, formData: FormData)
     if (sen == null) return fail("Jumlah tidak sah.", { [k]: ["Jumlah tidak sah"] });
     updates.push([k, sen]);
   }
-  const hours = z.coerce.number().int().min(1).max(720).safeParse(formData.get("reservation_expiry_hours"));
-  if (!hours.success) return fail("Tempoh tempahan mesti 1–720 jam.", { reservation_expiry_hours: ["1–720 jam"] });
-  updates.push(["reservation_expiry_hours", hours.data]);
   updates.push(["admin_mfa_required", formData.get("admin_mfa_required") === "on"]);
 
   for (const [key, value] of updates) {
     const res = await callRpc("update_system_setting", { p_key: key, p_value: value }, { success: "" });
     if (!res?.ok) return res;
   }
-  return callRpc("expire_stale_reservations", {}, { success: "Tetapan disimpan.", revalidate: ["/admin/tetapan", "/ahli"] });
+  revalidatePath("/admin/tetapan");
+  revalidatePath("/ahli", "layout");
+  return { ok: true, message: "Tetapan disimpan." };
 }

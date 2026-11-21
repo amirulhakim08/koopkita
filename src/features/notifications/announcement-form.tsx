@@ -75,7 +75,7 @@ export function AnnouncementForm({ members }: { members: Member[] }) {
 
       <FormField label="Tajuk" htmlFor="title" required><Input id="title" name="title" maxLength={150} /></FormField>
       <FormField label="Mesej" htmlFor="body" required><Textarea id="body" name="body" rows={5} maxLength={2000} /></FormField>
-      <FormField label="Pautan dalaman (pilihan)" htmlFor="link" hint="cth. /ahli/korban atau /ahli/komisen"><Input id="link" name="link" /></FormField>
+      <FormField label="Pautan dalaman (pilihan)" htmlFor="link" hint="cth. /ahli/projek atau /ahli/wallet"><Input id="link" name="link" /></FormField>
       <SubmitButton className="w-full" disabled={target === "selected" && selected.size === 0}>
         {target === "all" ? `Hantar kepada semua ahli (${members.length})` : `Hantar kepada ${selected.size} ahli dipilih`}
       </SubmitButton>

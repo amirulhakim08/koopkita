@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test.describe("public surface & PWA", () => {
   test("protected routes redirect signed-out visitors to login", async ({ page }) => {
-    for (const p of ["/ahli", "/admin", "/admin/ahli", "/ahli/komisen"]) {
+    for (const p of ["/ahli", "/admin", "/admin/ahli", "/ahli/wallet", "/ahli/projek", "/admin/projek"]) {
       await page.goto(p);
       await expect(page).toHaveURL(/\/log-masuk/);
     }

@@ -27,7 +27,7 @@ export default async function SettingsPage() {
             <CardDescription>Dipaparkan kepada ahli pada skrin arahan pembayaran. Masukkan butiran rasmi sahaja.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {!str("coop_bank_account_no") && <Alert tone="info">Belum ditetapkan. Jualan tetap boleh direkodkan; ahli akan diminta mengikut arahan pegawai koperasi untuk pembayaran.</Alert>}
+            {!str("coop_bank_account_no") && <Alert tone="info">Belum ditetapkan. Ahli akan diminta mengikut arahan pegawai koperasi untuk pembayaran modal syer dan projek.</Alert>}
             <FormField label="Nama bank" htmlFor="coop_bank_name"><Input id="coop_bank_name" name="coop_bank_name" defaultValue={str("coop_bank_name")} /></FormField>
             <FormField label="Nama pemegang akaun" htmlFor="coop_bank_account_name"><Input id="coop_bank_account_name" name="coop_bank_account_name" defaultValue={str("coop_bank_account_name")} /></FormField>
             <FormField label="Nombor akaun" htmlFor="coop_bank_account_no"><Input id="coop_bank_account_no" name="coop_bank_account_no" inputMode="numeric" defaultValue={str("coop_bank_account_no")} /></FormField>
@@ -36,7 +36,7 @@ export default async function SettingsPage() {
         </Card>
         <div className="space-y-6">
           <Card>
-            <CardHeader><CardTitle>Maklumat koperasi (Resit Rasmi)</CardTitle><CardDescription>Dipaparkan pada Resit Rasmi Koperasi untuk pembeli korban.</CardDescription></CardHeader>
+            <CardHeader><CardTitle>Maklumat koperasi</CardTitle><CardDescription>Nama, logo dan maklumat hubungan rasmi koperasi.</CardDescription></CardHeader>
             <CardContent className="space-y-4">
               <LogoUpload userId={userId} currentPath={str("coop_logo_path") || null} name="coop_logo_path" label="Logo koperasi" />
               <FormField label="Nama koperasi" htmlFor="coop_name"><Input id="coop_name" name="coop_name" defaultValue={str("coop_name")} /></FormField>
@@ -57,11 +57,8 @@ export default async function SettingsPage() {
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle>Korban & keselamatan</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Keselamatan</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <FormField label="Tempoh lalai tempahan tanpa bukti bayaran (jam)" htmlFor="reservation_expiry_hours" hint="Digunakan untuk kempen baharu. Jualan dalam semakan bayaran tidak tamat tempoh secara automatik.">
-                <Input id="reservation_expiry_hours" name="reservation_expiry_hours" type="number" min={1} max={720} defaultValue={num("reservation_expiry_hours")} />
-              </FormField>
               <label className="flex items-start gap-3 rounded-lg border p-3 text-sm">
                 <input type="checkbox" name="admin_mfa_required" defaultChecked={s.admin_mfa_required !== false} className="mt-0.5 size-4 accent-[var(--primary)]" />
                 <span><strong>Wajibkan MFA untuk Super Admin</strong><br /><span className="text-muted-foreground">Sangat disyorkan. Hanya matikan untuk pembangunan tempatan.</span></span>

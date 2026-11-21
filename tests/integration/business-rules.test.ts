@@ -7,8 +7,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Pool } from "pg";
 import {
-  asRole, asService, asUser, commissionTotal, configureBank, confirmEmail, createActiveMember, createAdmin,
-  createOpenCampaign, createSale, freshDatabase, key, payAndApprove, signUp,
+  asRole, asService, asUser, configureBank, confirmEmail, createActiveMember, createAdmin, createOpenProject,
+  freshDatabase, joinProject, key, signUp,
 } from "./db";
 
 let pool: Pool;
@@ -23,12 +23,6 @@ beforeAll(async () => {
 afterAll(async () => {
   await pool.end();
 });
-
-let yearSeq = 2040;
-const freshCampaign = (cattle: number) => createOpenCampaign(pool, admin, cattle, yearSeq++);
-
-const cattleOf = async (saleId: string) =>
-  (await pool.query(`select distinct cattle_id from public.cattle_slots where sale_id = $1`, [saleId])).rows.map((r) => r.cattle_id);
 
 describe("membership & access control", () => {
   it("creates a pending-verification profile on sign-up and strips sensitive auth metadata", async () => {
@@ -63,8 +57,9 @@ describe("membership & access control", () => {
     await expect(
       asUser(pool, uid, `select public.submit_share_payment(5000, current_date, 'REF-PENDING', $1, $2)`, [`${uid}/r.pdf`, key()]),
     ).rejects.toThrow(/FORBIDDEN/);
-    const campaigns = await asUser(pool, uid, `select * from public.campaigns`);
-    expect(campaigns).toHaveLength(0);
+    await createOpenProject(pool, admin, { target_sen: 1000000 });
+    expect(await asUser(pool, uid, `select * from public.projects`)).toHaveLength(0);
+    await expect(asUser(pool, uid, `select * from public.project_progress()`)).rejects.toThrow(/FORBIDDEN/);
     // still sees own profile, so the app can show "pending approval"
     const own = await asUser(pool, uid, `select status from public.profiles`);
     expect(own).toEqual([{ status: "pending_approval" }]);
@@ -178,371 +173,6 @@ describe("share capital", () => {
   });
 });
 
-describe("qurban slots", () => {
-  let campaign: string;
-  let m1: string;
-  let m2: string;
-
-  beforeAll(async () => {
-    campaign = await createOpenCampaign(pool, admin, 2, 2027);
-    m1 = await createActiveMember(pool, admin, "slot1@kita.test");
-    m2 = await createActiveMember(pool, admin, "slot2@kita.test");
-  });
-
-  it("generates 7 slots per cattle with KITA-YYYY-NNN codes", async () => {
-    const { rows } = await pool.query(
-      `select k.code, count(s.*)::int n from public.cattle k join public.cattle_slots s on s.cattle_id = k.id
-        where k.campaign_id = $1 group by k.code order by k.code`, [campaign]);
-    expect(rows).toEqual([{ code: "KITA-2027-001", n: 7 }, { code: "KITA-2027-002", n: 7 }]);
-  });
-
-  it("#5 a cattle can never hold more than seven shares", async () => {
-    const [{ id: cattleId }] = (await pool.query(`select id from public.cattle where campaign_id = $1 limit 1`, [campaign])).rows;
-    await expect(pool.query(`insert into public.cattle_slots (cattle_id, slot_no) values ($1, 8)`, [cattleId])).rejects.toThrow(/check/);
-    await expect(pool.query(`insert into public.cattle_slots (cattle_id, slot_no) values ($1, 1)`, [cattleId])).rejects.toThrow(/unique|duplicate/);
-    // a campaign of 2 cattle has 14 shares: the 15th cannot be sold
-    const s1 = await createSale(pool, m1, campaign, 7);
-    const s2 = await createSale(pool, m2, campaign, 7);
-    await expect(createSale(pool, m1, campaign, 1)).rejects.toThrow(/tidak mencukupi/);
-    await asUser(pool, m1, `select public.cancel_qurban_sale($1, 'ujian')`, [s1]);
-    await asUser(pool, m2, `select public.cancel_qurban_sale($1, 'ujian')`, [s2]);
-  });
-
-  it("allocates a 7-share order into a single cattle and fills partially-used cattle first", async () => {
-    const a = await createSale(pool, m1, campaign, 3);
-    const b = await createSale(pool, m2, campaign, 2);
-    expect(await cattleOf(b)).toEqual(await cattleOf(a)); // prioritises cattle with existing reservations
-    const c = await createSale(pool, m1, campaign, 7);
-    const cattle = await cattleOf(c);
-    expect(cattle).toHaveLength(1);
-    expect(cattle[0]).not.toBe((await cattleOf(a))[0]);
-    for (const s of [a, b, c]) await asUser(pool, admin, `select public.cancel_qurban_sale($1, 'ujian')`, [s]);
-  });
-
-  it("#6 concurrent bookings never reserve the same slot", async () => {
-    const members = await Promise.all(
-      Array.from({ length: 6 }, (_, i) => createActiveMember(pool, admin, `serentak${i}@kita.test`)),
-    );
-    // 6 members race for 3 shares each = 18 shares, but only 14 exist
-    const results = await Promise.allSettled(members.map((m) => createSale(pool, m, campaign, 3)));
-    const ok = results.filter((r) => r.status === "fulfilled").length;
-    expect(ok).toBe(4); // 12 shares fit, the 5th order (15) does not
-    const { rows } = await pool.query(
-      `select s.id, count(*) over (partition by s.id) dup
-         from public.cattle_slots s join public.cattle k on k.id = s.cattle_id
-        where k.campaign_id = $1 and s.status = 'reserved'`, [campaign]);
-    expect(rows.length).toBe(12);
-    const participants = await pool.query(
-      `select slot_id, count(*)::int c from public.qurban_participants where slot_id is not null group by slot_id having count(*) > 1`);
-    expect(participants.rows).toHaveLength(0);
-    for (const r of results) if (r.status === "fulfilled") await asUser(pool, admin, `select public.cancel_qurban_sale($1, 'ujian')`, [r.value]);
-  });
-
-  it("expires reservations without payment proof but never sales under review", async () => {
-    const stale = await createSale(pool, m1, campaign, 1);
-    const reviewed = await createSale(pool, m2, campaign, 1);
-    await asUser(pool, m2, `select public.submit_sale_payment($1, 85000, current_date, $2, $3, $4)`,
-      [reviewed, `EXP-${key()}`, `${m2}/p.pdf`, key()]);
-    await pool.query(`alter table public.qurban_sales disable trigger trg_qurban_sales_guard`);
-    await pool.query(`update public.qurban_sales set reservation_expires_at = now() - interval '1 hour' where id = any($1)`, [[stale, reviewed]]);
-    await pool.query(`alter table public.qurban_sales enable trigger trg_qurban_sales_guard`);
-    const [{ n }] = await asUser<{ n: number }>(pool, admin, `select public.expire_stale_reservations() as n`);
-    expect(n).toBe(1);
-    const { rows } = await pool.query(`select id, status from public.qurban_sales where id = any($1)`, [[stale, reviewed]]);
-    expect(rows.find((r) => r.id === stale)?.status).toBe("cancelled");
-    expect(rows.find((r) => r.id === reviewed)?.status).toBe("pending_review");
-    await asUser(pool, admin, `select public.reject_qurban_sale($1, 'ujian')`, [reviewed]);
-  });
-
-  it("admin can override a slot assignment before approval", async () => {
-    const sale = await createSale(pool, m1, campaign, 1);
-    const [p] = (await pool.query(`select id, slot_id from public.qurban_participants where sale_id = $1`, [sale])).rows;
-    const [target] = (await pool.query(
-      `select s.id from public.cattle_slots s join public.cattle k on k.id = s.cattle_id
-        where k.campaign_id = $1 and s.status = 'available' and s.id <> $2 order by k.seq desc, s.slot_no desc limit 1`,
-      [campaign, p.slot_id])).rows;
-    await asUser(pool, admin, `select public.admin_reassign_slot($1, $2)`, [p.id, target.id]);
-    const old = (await pool.query(`select status from public.cattle_slots where id = $1`, [p.slot_id])).rows[0];
-    const now = (await pool.query(`select status, sale_id from public.cattle_slots where id = $1`, [target.id])).rows[0];
-    expect(old.status).toBe("available");
-    expect(now).toEqual({ status: "reserved", sale_id: sale });
-    await asUser(pool, m1, `select public.cancel_qurban_sale($1, 'ujian')`, [sale]);
-  });
-
-  it("allows sales before the cooperative bank account is configured", async () => {
-    const pool2 = await freshDatabase("koopkita_nobank");
-    try {
-      const a = await createAdmin(pool2);
-      const c = await createOpenCampaign(pool2, a, 1);
-      const m = await createActiveMember(pool2, a, "x@kita.test");
-      await expect(createSale(pool2, m, c, 1)).resolves.toMatch(/^[0-9a-f-]{36}$/);
-    } finally {
-      await pool2.end();
-    }
-  });
-});
-
-describe("commission engine", () => {
-  let campaign: string;
-  let m1: string;
-  let m2: string;
-  let m3: string;
-
-  beforeAll(async () => {
-    campaign = await createOpenCampaign(pool, admin, 6, 2028);
-    m1 = await createActiveMember(pool, admin, "kom1@kita.test");
-    m2 = await createActiveMember(pool, admin, "kom2@kita.test");
-    m3 = await createActiveMember(pool, admin, "kom3@kita.test");
-  });
-
-  it("#7 pending sales do not generate commission", async () => {
-    const sale = await createSale(pool, m1, campaign, 2);
-    await asUser(pool, m1, `select public.submit_sale_payment($1, 170000, current_date, $2, $3, $4)`,
-      [sale, `P7-${key()}`, `${m1}/p7.pdf`, key()]);
-    expect(await commissionTotal(pool, m1)).toBe(0);
-    await asUser(pool, admin, `select public.reject_qurban_sale($1, 'ujian')`, [sale]);
-    expect(await commissionTotal(pool, m1)).toBe(0);
-  });
-
-  it("partial payments are recorded but cannot be approved or earn commission until paid in full", async () => {
-    const sale = await createSale(pool, m1, campaign, 1);
-    const [{ id: p1 }] = await asUser<{ id: string }>(pool, m1,
-      `select public.submit_sale_payment($1, 50000, current_date, $2, $3, $4) as id`, [sale, `PP1-${key()}`, `${m1}/pp1.pdf`, key()]);
-    await asUser(pool, admin, `select public.review_sale_payment($1, true, null)`, [p1]);
-    const st = (await pool.query(`select status, reservation_expires_at from public.qurban_sales where id = $1`, [sale])).rows[0];
-    expect(st.status).toBe("pending_payment");
-    expect(st.reservation_expires_at).toBeNull(); // money received: never auto-expired
-    await expect(asUser(pool, admin, `select public.approve_qurban_sale($1, null)`, [sale])).rejects.toThrow(/belum penuh/);
-    expect(await commissionTotal(pool, m1)).toBe(0);
-    await expect(asUser(pool, m1, `select public.submit_sale_payment($1, 50000, current_date, $2, $3, $4)`,
-      [sale, `PP2-${key()}`, `${m1}/pp2.pdf`, key()])).rejects.toThrow(/melebihi baki/);
-    const [{ id: p2 }] = await asUser<{ id: string }>(pool, m1,
-      `select public.submit_sale_payment($1, 35000, current_date, $2, $3, $4) as id`, [sale, `PP3-${key()}`, `${m1}/pp3.pdf`, key()]);
-    await asUser(pool, admin, `select public.review_sale_payment($1, true, null)`, [p2]);
-    await asUser(pool, admin, `select public.approve_qurban_sale($1, null)`, [sale]);
-    expect(await commissionTotal(pool, m1)).toBe(4000);
-  });
-
-  it("#8 one approved share generates RM40", async () => {
-    const before = await commissionTotal(pool, m2);
-    const sale = await createSale(pool, m2, campaign, 1);
-    await payAndApprove(pool, admin, m2, sale);
-    expect((await commissionTotal(pool, m2)) - before).toBe(4000);
-  });
-
-  it("#9 six approved shares generate RM240", async () => {
-    const before = await commissionTotal(pool, m3);
-    const sale = await createSale(pool, m3, campaign, 6);
-    await payAndApprove(pool, admin, m3, sale);
-    expect((await commissionTotal(pool, m3)) - before).toBe(24000);
-  });
-
-  it("#10 seven shares of the same cattle sold by one member generate RM300 (RM280 + RM20 entries)", async () => {
-    const member = await createActiveMember(pool, admin, "penuh@kita.test");
-    const sale = await createSale(pool, member, campaign, 7);
-    expect(await cattleOf(sale)).toHaveLength(1);
-    await payAndApprove(pool, admin, member, sale);
-    expect(await commissionTotal(pool, member)).toBe(30000);
-    const { rows } = await pool.query(
-      `select entry_type, amount_sen::int from public.commission_ledger where member_id = $1 order by amount_sen desc`, [member]);
-    expect(rows).toEqual([
-      { entry_type: "standard", amount_sen: 28000 },
-      { entry_type: "full_cattle_incentive", amount_sen: 2000 },
-    ]);
-  });
-
-  it("#10b the full-cattle rule also applies when one member completes a cattle over several sales", async () => {
-    const member = await createActiveMember(pool, admin, "penuh2@kita.test");
-    const own = await freshCampaign(1);
-    const a = await createSale(pool, member, own, 3);
-    const b = await createSale(pool, member, own, 4);
-    expect(await cattleOf(a)).toEqual(await cattleOf(b));
-    await payAndApprove(pool, admin, member, a);
-    expect(await commissionTotal(pool, member)).toBe(12000);
-    await payAndApprove(pool, admin, member, b);
-    expect(await commissionTotal(pool, member)).toBe(30000);
-  });
-
-  it("#11 seven shares of one cattle split among different members generate RM280 in total", async () => {
-    const members = await Promise.all([1, 2, 3].map((i) => createActiveMember(pool, admin, `kongsi${i}@kita.test`)));
-    const own = await freshCampaign(1);
-    const a = await createSale(pool, members[0], own, 3);
-    const b = await createSale(pool, members[1], own, 2);
-    const c = await createSale(pool, members[2], own, 2);
-    const cattle = new Set([...(await cattleOf(a)), ...(await cattleOf(b)), ...(await cattleOf(c))]);
-    expect(cattle.size).toBe(1);
-    for (const [m, s] of [[members[0], a], [members[1], b], [members[2], c]] as const) await payAndApprove(pool, admin, m, s);
-    const totals = await Promise.all(members.map((m) => commissionTotal(pool, m)));
-    expect(totals).toEqual([12000, 8000, 8000]);
-    expect(totals.reduce((x, y) => x + y, 0)).toBe(28000);
-  });
-
-  it("#12 seven shares across different cattle do not qualify for RM300", async () => {
-    const member = await createActiveMember(pool, admin, "rentas@kita.test");
-    const filler = await createActiveMember(pool, admin, "pengisi@kita.test");
-    // occupy part of the last free cattle so the 7 shares must span cattle
-    const own = await freshCampaign(2);
-    const f = await createSale(pool, filler, own, 3);
-    const s1 = await createSale(pool, member, own, 4);
-    const s2 = await createSale(pool, member, own, 3);
-    const cattle = new Set([...(await cattleOf(s1)), ...(await cattleOf(s2))]);
-    expect(cattle.size).toBeGreaterThan(1);
-    await payAndApprove(pool, admin, member, s1);
-    await payAndApprove(pool, admin, member, s2);
-    expect(await commissionTotal(pool, member)).toBe(28000);
-    await asUser(pool, admin, `select public.cancel_qurban_sale($1, 'ujian')`, [f]);
-  });
-
-  it("#13 repeated approval requests never duplicate commission", async () => {
-    const member = await createActiveMember(pool, admin, "ulang@kita.test");
-    const sale = await createSale(pool, member, campaign, 2);
-    await payAndApprove(pool, admin, member, sale);
-    await Promise.all(Array.from({ length: 5 }, () => asUser(pool, admin, `select public.approve_qurban_sale($1, null)`, [sale])));
-    await asUser(pool, admin, `select public.approve_qurban_sale($1, null)`, [sale]);
-    expect(await commissionTotal(pool, member)).toBe(8000);
-    const { rows } = await pool.query(`select count(*)::int c from public.commission_ledger where sale_id = $1`, [sale]);
-    expect(rows[0].c).toBe(1);
-  });
-
-  it("#14 cancelling an approved sale reverses its commission (incl. the full-cattle incentive)", async () => {
-    const member = await createActiveMember(pool, admin, "batal@kita.test");
-    const own = await freshCampaign(1);
-    const a = await createSale(pool, member, own, 5);
-    const b = await createSale(pool, member, own, 2);
-    await payAndApprove(pool, admin, member, a);
-    await payAndApprove(pool, admin, member, b);
-    expect(await commissionTotal(pool, member)).toBe(30000);
-
-    // members cannot cancel an approved sale themselves
-    await expect(asUser(pool, member, `select public.cancel_qurban_sale($1, 'tukar fikiran')`, [b])).rejects.toThrow(/FORBIDDEN/);
-
-    await asUser(pool, admin, `select public.cancel_qurban_sale($1, 'Pembeli menarik diri')`, [b]);
-    // RM300 - RM80 (standard of b) - RM20 (incentive no longer valid) = RM200 = 5 x RM40
-    expect(await commissionTotal(pool, member)).toBe(20000);
-    const rev = await pool.query(`select count(*)::int c from public.commission_ledger where member_id = $1 and entry_type = 'reversal'`, [member]);
-    expect(rev.rows[0].c).toBe(2);
-    const slots = await pool.query(`select count(*)::int c from public.cattle_slots where sale_id = $1`, [b]);
-    expect(slots.rows[0].c).toBe(0);
-    // cancelling again is a no-op
-    await asUser(pool, admin, `select public.cancel_qurban_sale($1, 'ulang')`, [b]);
-    expect(await commissionTotal(pool, member)).toBe(20000);
-  });
-});
-
-describe("commission payouts", () => {
-  let member: string;
-  let campaign: string;
-
-  beforeAll(async () => {
-    campaign = await createOpenCampaign(pool, admin, 1, 2029);
-    member = await createActiveMember(pool, admin, "bayar@kita.test");
-    const sale = await createSale(pool, member, campaign, 3);
-    await payAndApprove(pool, admin, member, sale); // RM120 earned
-  });
-
-  const summary = async () =>
-    (await asUser<{ earned_sen: string; paid_sen: string; outstanding_sen: string }>(
-      pool, member, `select earned_sen, paid_sen, outstanding_sen from public.v_commission_summary where member_id = $1`, [member]))[0];
-
-  it("refuses to record a payout before the bank transfer is confirmed", async () => {
-    await expect(asUser(pool, admin,
-      `select public.record_commission_payout($1, 1000, current_date, 'TRF-0', null, null, false, null, null)`, [member]),
-    ).rejects.toThrow(/pemindahan bank/);
-  });
-
-  it("#15 partial payouts correctly update outstanding balances", async () => {
-    await asUser(pool, admin,
-      `select public.record_commission_payout($1, 5000, current_date, 'TRF-1', null, null, true, null, $2)`, [member, key()]);
-    let s = await summary();
-    expect([Number(s.earned_sen), Number(s.paid_sen), Number(s.outstanding_sen)]).toEqual([12000, 5000, 7000]);
-
-    await expect(asUser(pool, admin,
-      `select public.record_commission_payout($1, 7001, current_date, 'TRF-2', null, null, true, null, null)`, [member]),
-    ).rejects.toThrow(/melebihi/);
-
-    await asUser(pool, admin,
-      `select public.record_commission_payout($1, 7000, current_date, 'TRF-3', null, null, true, null, null)`, [member]);
-    s = await summary();
-    expect(Number(s.outstanding_sen)).toBe(0);
-    const items = await pool.query(
-      `select sum(i.amount_sen)::int s from public.commission_payout_items i join public.commission_payouts p on p.id = i.payout_id where p.member_id = $1`, [member]);
-    expect(items.rows[0].s).toBe(12000);
-  });
-
-  it("payout reversals restore the outstanding balance with an auditable record", async () => {
-    const [{ id }] = (await pool.query(`select id from public.commission_payouts where member_id = $1 and transaction_ref = 'TRF-3'`, [member])).rows;
-    await asUser(pool, admin, `select public.reverse_commission_payout($1, 'Pemindahan gagal')`, [id]);
-    const s = await summary();
-    expect(Number(s.outstanding_sen)).toBe(7000);
-    const n = await pool.query(`select count(*)::int c from public.commission_payouts where member_id = $1`, [member]);
-    expect(n.rows[0].c).toBe(3);
-  });
-
-  it("members see their payouts and earnings but cannot record payouts", async () => {
-    await expect(asUser(pool, member,
-      `select public.record_commission_payout($1, 100, current_date, 'TRF-X', null, null, true, null, null)`, [member]),
-    ).rejects.toThrow(/FORBIDDEN/);
-    const rows = await asUser(pool, member, `select * from public.commission_payouts`);
-    expect(rows.length).toBe(3);
-  });
-});
-
-describe("commission payout requests", () => {
-  let member: string;
-  let nobank: string;
-
-  beforeAll(async () => {
-    const campaign = await createOpenCampaign(pool, admin, 1, 2032);
-    member = await createActiveMember(pool, admin, "mohon@kita.test");
-    nobank = await (async () => {
-      const id = await signUp(pool, "tiadabank@kita.test", { meta: { bank_name: "", bank_account_no: "", bank_account_holder: "" } });
-      await asUser(pool, admin, `select public.approve_member($1, null)`, [id]);
-      return id;
-    })();
-    await payAndApprove(pool, admin, member, await createSale(pool, member, campaign, 2)); // RM80
-    await payAndApprove(pool, admin, nobank, await createSale(pool, nobank, campaign, 1)); // RM40
-  });
-
-  it("requires complete, valid bank details to request or receive a transfer", async () => {
-    await expect(asUser(pool, nobank, `select public.request_commission_payout(null)`)).rejects.toThrow(/akaun bank yang sah/);
-    await expect(asUser(pool, admin,
-      `select public.record_commission_payout($1, 4000, current_date, 'TRF-NB', null, null, true, null, null)`, [nobank]),
-    ).rejects.toThrow(/akaun bank yang sah/);
-    // invalid account number cannot even be saved on the profile
-    await expect(asUser(pool, nobank, `update public.profiles set bank_name = 'Maybank', bank_account_no = '12AB', bank_account_holder = 'Nama' where id = $1`, [nobank])).rejects.toThrow(/check/);
-  });
-
-  it("member requests the outstanding amount once; admin payout settles the request", async () => {
-    const [{ id }] = await asUser<{ id: string }>(pool, member, `select public.request_commission_payout('Sila pindah') as id`);
-    await expect(asUser(pool, member, `select public.request_commission_payout(null)`)).rejects.toThrow(/sedang diproses/);
-    const req = (await pool.query(`select amount_sen::int, bank_account_no, status from public.commission_payout_requests where id = $1`, [id])).rows[0];
-    expect(req).toEqual({ amount_sen: 8000, bank_account_no: "112233445566", status: "pending" });
-    // other members cannot see it
-    expect(await asUser(pool, nobank, `select * from public.commission_payout_requests`)).toHaveLength(0);
-
-    // a partial transfer keeps the request open
-    await asUser(pool, admin, `select public.record_commission_payout($1, 3000, current_date, 'TRF-R1', null, null, true, null, null)`, [member]);
-    expect((await pool.query(`select status from public.commission_payout_requests where id = $1`, [id])).rows[0].status).toBe("pending");
-    await asUser(pool, admin, `select public.record_commission_payout($1, 5000, current_date, 'TRF-R2', null, null, true, null, null)`, [member]);
-    const done = (await pool.query(`select status, payout_id from public.commission_payout_requests where id = $1`, [id])).rows[0];
-    expect(done.status).toBe("paid");
-    expect(done.payout_id).toBeTruthy();
-    await expect(asUser(pool, member, `select public.request_commission_payout(null)`)).rejects.toThrow(/Tiada baki/);
-  });
-
-  it("members can cancel and admins can reject requests; records are never deleted", async () => {
-    await pool.query(`update public.profiles set bank_name = 'CIMB', bank_account_no = '8000123456', bank_account_holder = 'Ahli Tanpa Bank' where id = $1`, [nobank]);
-    const [{ id: r1 }] = await asUser<{ id: string }>(pool, nobank, `select public.request_commission_payout(null) as id`);
-    await asUser(pool, nobank, `select public.cancel_payout_request($1)`, [r1]);
-    const [{ id: r2 }] = await asUser<{ id: string }>(pool, nobank, `select public.request_commission_payout(null) as id`);
-    await expect(asUser(pool, nobank, `select public.reject_payout_request($1, 'x')`, [r2])).rejects.toThrow(/FORBIDDEN/);
-    await asUser(pool, admin, `select public.reject_payout_request($1, 'Nama pemegang tidak sepadan')`, [r2]);
-    const rows = (await pool.query(`select status from public.commission_payout_requests where member_id = $1 order by created_at`, [nobank])).rows;
-    expect(rows.map((r) => r.status)).toEqual(["cancelled", "rejected"]);
-    await expect(pool.query(`delete from public.commission_payout_requests where id = $1`, [r1])).rejects.toThrow(/IMMUTABLE_RECORD/);
-  });
-});
-
 describe("cooperative finance (admin only)", () => {
   let member: string;
   const entry = (dir: "in" | "out", cat: string, sen: number, desc: string, biz = "umum") =>
@@ -563,10 +193,11 @@ describe("cooperative finance (admin only)", () => {
     expect(Number(after.manual_in_sen) - Number(before.manual_in_sen)).toBe(500000);
     expect(Number(after.manual_out_sen) - Number(before.manual_out_sen)).toBe(120000);
     expect(Number(after.total_funds_sen) - Number(before.total_funds_sen)).toBe(380000);
-    // total = share capital + qurban received - commission paid + manual in - manual out
+    // total = share capital + project cash flows + manual in - manual out
     expect(Number(after.total_funds_sen)).toBe(
-      Number(after.share_capital_sen) + Number(after.qurban_received_sen) - Number(after.commission_paid_sen)
-      + Number(after.manual_in_sen) - Number(after.manual_out_sen));
+      Number(after.share_capital_sen) + Number(after.project_capital_sen) - Number(after.project_invested_sen)
+      + Number(after.project_profit_sen) + Number(after.capital_received_sen) - Number(after.dividend_paid_sen)
+      - Number(after.capital_returned_sen) + Number(after.manual_in_sen) - Number(after.manual_out_sen));
     expect(Number(after.funds_excl_share_sen)).toBe(Number(after.total_funds_sen) - Number(after.share_capital_sen));
   });
 
@@ -574,6 +205,7 @@ describe("cooperative finance (admin only)", () => {
     await expect(entry("out", "pengeluaran_tunai", 1000, "x")).rejects.toThrow(/sebab pengeluaran/);
     await expect(entry("out", "hasil_perniagaan", 1000, "Kategori salah arah")).rejects.toThrow(/Kategori/);
     await expect(entry("in", "sumbangan", 1000, "Perniagaan tidak wujud", "kasino")).rejects.toThrow(/Kategori atau perniagaan/);
+    await expect(entry("in", "sumbangan", 1000, "Korban sudah tiada", "korban")).rejects.toThrow(/Kategori atau perniagaan/);
   });
 
   it("corrections are reversal entries; records cannot be edited or deleted", async () => {
@@ -586,7 +218,7 @@ describe("cooperative finance (admin only)", () => {
     await expect(pool.query(`delete from public.coop_ledger_entries where id = $1`, [id])).rejects.toThrow(/IMMUTABLE_RECORD/);
     const book = await asUser<{ source: string; reversed: boolean }>(pool, admin, `select * from public.admin_cashbook(null, null, 1000)`);
     expect(book.some((r) => r.source === "manual" && r.reversed)).toBe(true);
-    expect(new Set(book.map((r) => r.source))).toEqual(new Set(["manual", "modal_syer", "korban", "komisen"]));
+    expect(book.every((r) => ["manual", "modal_syer"].includes(r.source) || r.source.startsWith("projek_"))).toBe(true);
   });
 
   it("members can neither see nor record cooperative finances", async () => {
@@ -621,45 +253,27 @@ describe("admin notifications", () => {
   });
 });
 
-describe("official cooperative receipt for Qurban buyers", () => {
-  it("is available to the seller and admin for approved sales only", async () => {
-    const campaign = await createOpenCampaign(pool, admin, 1, 2060);
-    const seller = await createActiveMember(pool, admin, "resit-rasmi@kita.test");
-    const stranger = await createActiveMember(pool, admin, "resit-orang-lain@kita.test");
-    const sale = await createSale(pool, seller, campaign, 2);
-    await expect(asUser(pool, seller, `select public.coop_sale_receipt($1)`, [sale])).rejects.toThrow(/diluluskan/);
-    await payAndApprove(pool, admin, seller, sale);
-    const [{ r }] = await asUser<{ r: { sale_no: string; total_sen: number; participants: unknown[]; coop: { name: string } } }>(
-      pool, seller, `select public.coop_sale_receipt($1) as r`, [sale]);
-    expect([Number(r.total_sen), r.participants.length]).toEqual([170000, 2]);
-    expect(r.coop.name).toContain("Koperasi");
-    await expect(asUser(pool, admin, `select public.coop_sale_receipt($1)`, [sale])).resolves.toBeTruthy();
-    await expect(asUser(pool, stranger, `select public.coop_sale_receipt($1)`, [sale])).rejects.toThrow(/NOT_FOUND/);
-  });
-});
-
 describe("data isolation & immutability", () => {
   it("#16 members cannot access another member's private data", async () => {
-    const campaign = await createOpenCampaign(pool, admin, 1, 2030);
     const a = await createActiveMember(pool, admin, "privasi-a@kita.test");
     const b = await createActiveMember(pool, admin, "privasi-b@kita.test");
-    const sale = await createSale(pool, a, campaign, 1);
+    const project = await createOpenProject(pool, admin, { target_sen: 2000000 });
+    const contribution = await joinProject(pool, a, project, 50000);
     await asUser(pool, a, `select public.submit_share_payment(5000, current_date, $1, $2, $3)`, [`PRV-${key()}`, `${a}/s.pdf`, key()]);
 
     const notes = await asUser<{ user_id: string }>(pool, b, `select user_id from public.notifications`);
     expect(notes.every((n) => n.user_id === b)).toBe(true);
-    for (const table of ["qurban_sales", "buyers", "qurban_participants", "share_transactions", "commission_ledger", "payment_submissions"]) {
+    for (const table of ["share_transactions", "project_participations", "project_profit_allocations", "project_withdrawals", "project_capital_returns"]) {
       const rows = await asUser(pool, b, `select * from public.${table}`);
       expect(rows, table).toHaveLength(0);
     }
     const profiles = await asUser<{ id: string }>(pool, b, `select id, ic_number from public.profiles`);
     expect(profiles.map((p) => p.id)).toEqual([b]);
-    await expect(asUser(pool, b, `select public.cancel_qurban_sale($1, 'bukan saya')`, [sale])).rejects.toThrow(/NOT_FOUND/);
-    await expect(asUser(pool, b, `select public.submit_sale_payment($1, 85000, current_date, 'X-REF', $2, $3)`,
-      [sale, `${b}/x.pdf`, key()])).rejects.toThrow(/NOT_FOUND/);
+    await expect(asUser(pool, b, `select * from public.member_project_wallet($1)`, [a])).rejects.toThrow(/FORBIDDEN/);
+    await expect(asUser(pool, b, `select public.review_project_participation($1, true, null)`, [contribution])).rejects.toThrow(/FORBIDDEN/);
     const audit = await asUser(pool, b, `select * from public.audit_logs`);
     expect(audit).toHaveLength(0);
-    const adminView = await asUser(pool, admin, `select * from public.qurban_sales where id = $1`, [sale]);
+    const adminView = await asUser(pool, admin, `select * from public.project_participations where id = $1`, [contribution]);
     expect(adminView).toHaveLength(1);
   });
 
@@ -675,40 +289,40 @@ describe("data isolation & immutability", () => {
   });
 
   it("#17 financial records cannot be silently deleted or modified — even by the database owner", async () => {
-    const { rows: [entry] } = await pool.query(`select id from public.commission_ledger limit 1`);
-    await expect(pool.query(`update public.commission_ledger set amount_sen = 1 where id = $1`, [entry.id])).rejects.toThrow(/IMMUTABLE_RECORD/);
-    await expect(pool.query(`delete from public.commission_ledger where id = $1`, [entry.id])).rejects.toThrow(/IMMUTABLE_RECORD/);
-    await expect(pool.query(`truncate public.commission_ledger cascade`)).rejects.toThrow(/IMMUTABLE_RECORD/);
-    await expect(pool.query(`delete from public.commission_payouts`)).rejects.toThrow(/IMMUTABLE_RECORD/);
-    await expect(pool.query(`delete from public.share_transactions`)).rejects.toThrow(/IMMUTABLE_RECORD/);
-    await expect(pool.query(`delete from public.qurban_sales`)).rejects.toThrow(/IMMUTABLE_RECORD/);
-    await expect(pool.query(`update public.audit_logs set action = 'x'`)).rejects.toThrow(/IMMUTABLE_RECORD/);
-    const { rows: [approved] } = await pool.query(`select id from public.qurban_sales where status = 'approved' limit 1`);
-    await expect(pool.query(`update public.qurban_sales set total_sen = 1, share_count = 1 where id = $1`, [approved.id])).rejects.toThrow(/IMMUTABLE_RECORD/);
-    // clients have no write privileges at all
     const m = await createActiveMember(pool, admin, "tulis@kita.test");
-    await expect(asUser(pool, m, `insert into public.commission_ledger (member_id, entry_type, amount_sen, description, source_key) values ($1, 'adjustment', 100000, 'x', 'x')`, [m])).rejects.toThrow(/permission denied/);
+    const project = await createOpenProject(pool, admin, { target_sen: 1000000 });
+    const contribution = await joinProject(pool, m, project, 50000);
+    await asUser(pool, admin, `select public.review_project_participation($1, true, null)`, [contribution]);
+    await expect(pool.query(`update public.project_participations set amount_sen = 1 where id = $1`, [contribution])).rejects.toThrow(/IMMUTABLE_RECORD/);
+    await expect(pool.query(`delete from public.project_participations where id = $1`, [contribution])).rejects.toThrow(/IMMUTABLE_RECORD/);
+    await expect(pool.query(`truncate public.project_participations cascade`)).rejects.toThrow(/IMMUTABLE_RECORD/);
+    await expect(pool.query(`delete from public.projects where id = $1`, [project])).rejects.toThrow(/IMMUTABLE_RECORD/);
+    await expect(pool.query(`update public.projects set target_sen = 1 where id = $1`, [project])).rejects.toThrow(/IMMUTABLE_RECORD/);
+    await expect(pool.query(`delete from public.share_transactions`)).rejects.toThrow(/IMMUTABLE_RECORD/);
+    await expect(pool.query(`update public.audit_logs set action = 'x'`)).rejects.toThrow(/IMMUTABLE_RECORD/);
+    // clients have no write privileges at all
+    await expect(asUser(pool, m, `insert into public.project_withdrawals (withdrawal_no, project_id, member_id, amount_sen, bank_name, bank_account_no, bank_account_holder, idempotency_key) values ('X', $1, $2, 100, 'B', '1234567', 'Saya', 'x')`, [project, m])).rejects.toThrow(/permission denied/);
+    await expect(asUser(pool, m, `update public.project_participations set status = 'approved'`)).rejects.toThrow(/permission denied/);
     await expect(asUser(pool, admin, `delete from public.share_transactions`)).rejects.toThrow(/permission denied/);
   });
 
   it("administrative and financial actions are written to the audit log", async () => {
     const { rows } = await pool.query(`select distinct action from public.audit_logs`);
     const actions = rows.map((r) => r.action);
-    for (const a of ["member.approved", "share_payment.approved", "sale.approved", "commission.payout_recorded", "sale.cancelled", "setting.updated"]) {
+    for (const a of ["member.approved", "share_payment.approved", "project.created", "project.published", "project.participation_approved", "setting.updated"]) {
       expect(actions).toContain(a);
     }
   });
 
   it("notification failures do not roll back financial operations", async () => {
-    const campaign = await createOpenCampaign(pool, admin, 1, 2031);
     const m = await createActiveMember(pool, admin, "notif@kita.test");
-    const sale = await createSale(pool, m, campaign, 1);
-    await pool.query(`alter table public.notifications add constraint notif_block check (type <> 'sale_approved') not valid`);
+    const project = await createOpenProject(pool, admin, { target_sen: 1000000 });
+    const contribution = await joinProject(pool, m, project, 50000);
+    await pool.query(`alter table public.notifications add constraint notif_block check (type <> 'project_payment_approved') not valid`);
     try {
-      await payAndApprove(pool, admin, m, sale);
-      const st = (await pool.query(`select status from public.qurban_sales where id = $1`, [sale])).rows[0].status;
+      await asUser(pool, admin, `select public.review_project_participation($1, true, null)`, [contribution]);
+      const st = (await pool.query(`select status from public.project_participations where id = $1`, [contribution])).rows[0].status;
       expect(st).toBe("approved");
-      expect(await commissionTotal(pool, m)).toBe(4000);
     } finally {
       await pool.query(`alter table public.notifications drop constraint notif_block`);
     }

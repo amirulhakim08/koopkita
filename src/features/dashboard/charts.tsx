@@ -1,8 +1,7 @@
 "use client";
-import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { formatRM } from "@/lib/format";
 
-const COLORS = ["var(--chart-1)", "var(--chart-3)", "var(--chart-4)", "var(--chart-2)", "var(--chart-5)"];
 const axis = { fontSize: 11, fill: "var(--muted-foreground)" };
 const rmShort = (sen: number) => `RM${Math.round(sen / 100).toLocaleString("en-MY")}`;
 
@@ -10,16 +9,37 @@ function Empty() {
   return <div className="flex h-56 items-center justify-center text-sm text-muted-foreground">Tiada data lagi</div>;
 }
 
-export function SalesChart({ data }: { data: { month: string; shares: number; revenue_sen: number }[] }) {
-  if (!data.length) return <Empty />;
+/** Member's own business: sales and money received per month. */
+export function BusinessChart({ data }: { data: { month: string; sales_sen: number; received_sen: number }[] }) {
+  if (!data.some((d) => Number(d.sales_sen) || Number(d.received_sen))) return <Empty />;
   return (
-    <ResponsiveContainer width="100%" height={240}>
+    <ResponsiveContainer width="100%" height={220}>
       <BarChart data={data} margin={{ left: 0, right: 8, top: 8 }}>
         <CartesianGrid vertical={false} stroke="var(--border)" />
         <XAxis dataKey="month" tick={axis} tickLine={false} axisLine={false} />
         <YAxis tick={axis} tickLine={false} axisLine={false} tickFormatter={rmShort} width={70} />
         <Tooltip formatter={(v) => formatRM(Number(v))} labelFormatter={(l) => `Bulan ${l}`} />
-        <Bar dataKey="revenue_sen" name="Hasil jualan" fill="var(--chart-1)" radius={[6, 6, 0, 0]} maxBarSize={40} />
+        <Legend wrapperStyle={{ fontSize: 12 }} />
+        <Bar dataKey="sales_sen" name="Jualan" fill="var(--chart-1)" radius={[6, 6, 0, 0]} maxBarSize={32} />
+        <Bar dataKey="received_sen" name="Diterima" fill="var(--chart-3)" radius={[6, 6, 0, 0]} maxBarSize={32} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+/** Admin: capital collected against the target per project. */
+export function ProjectCapitalChart({ data }: { data: { name: string; collected: number; remaining: number }[] }) {
+  if (!data.length) return <Empty />;
+  return (
+    <ResponsiveContainer width="100%" height={Math.max(160, data.length * 56)}>
+      <BarChart data={data} layout="vertical" margin={{ left: 8, right: 8 }}>
+        <CartesianGrid horizontal={false} stroke="var(--border)" />
+        <XAxis type="number" tick={axis} tickLine={false} axisLine={false} tickFormatter={rmShort} />
+        <YAxis type="category" dataKey="name" tick={axis} tickLine={false} axisLine={false} width={130} />
+        <Tooltip formatter={(v) => formatRM(Number(v))} />
+        <Legend wrapperStyle={{ fontSize: 12 }} />
+        <Bar dataKey="collected" stackId="a" name="Terkumpul" fill="var(--chart-1)" />
+        <Bar dataKey="remaining" stackId="a" name="Baki" fill="var(--secondary)" radius={[0, 6, 6, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -40,42 +60,6 @@ export function ShareGrowthChart({ data }: { data: { month: string; amount_sen: 
         <Tooltip formatter={(v) => formatRM(Number(v))} />
         <Line type="monotone" dataKey="total" name="Modal syer kumulatif" stroke="var(--chart-1)" strokeWidth={2.5} dot={{ r: 3 }} />
       </LineChart>
-    </ResponsiveContainer>
-  );
-}
-
-const TYPE_LABEL: Record<string, string> = { standard: "Komisen biasa", full_cattle_incentive: "Insentif seekor penuh", reversal: "Pembalikan", adjustment: "Pelarasan" };
-
-export function CommissionChart({ data }: { data: { entry_type: string; amount_sen: number }[] }) {
-  const rows = data.filter((d) => Number(d.amount_sen) > 0).map((d) => ({ name: TYPE_LABEL[d.entry_type] ?? d.entry_type, value: Number(d.amount_sen) }));
-  if (!rows.length) return <Empty />;
-  return (
-    <ResponsiveContainer width="100%" height={240}>
-      <PieChart>
-        <Pie data={rows} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={2}>
-          {rows.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-        </Pie>
-        <Tooltip formatter={(v) => formatRM(Number(v))} />
-        <Legend wrapperStyle={{ fontSize: 12 }} />
-      </PieChart>
-    </ResponsiveContainer>
-  );
-}
-
-export function CampaignProgressChart({ data }: { data: { name: string; confirmed: number; reserved: number; available: number }[] }) {
-  if (!data.length) return <Empty />;
-  return (
-    <ResponsiveContainer width="100%" height={Math.max(160, data.length * 56)}>
-      <BarChart data={data} layout="vertical" margin={{ left: 8, right: 8 }}>
-        <CartesianGrid horizontal={false} stroke="var(--border)" />
-        <XAxis type="number" tick={axis} tickLine={false} axisLine={false} allowDecimals={false} />
-        <YAxis type="category" dataKey="name" tick={axis} tickLine={false} axisLine={false} width={120} />
-        <Tooltip />
-        <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Bar dataKey="confirmed" stackId="a" name="Disahkan" fill="var(--chart-1)" />
-        <Bar dataKey="reserved" stackId="a" name="Ditempah" fill="var(--chart-4)" />
-        <Bar dataKey="available" stackId="a" name="Tersedia" fill="var(--secondary)" radius={[0, 6, 6, 0]} />
-      </BarChart>
     </ResponsiveContainer>
   );
 }

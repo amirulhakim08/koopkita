@@ -62,3 +62,18 @@ export function formatIc(ic: string | null | undefined): string {
   if (!ic) return "-";
   return `${ic.slice(0, 6)}-${ic.slice(6, 8)}-${ic.slice(8)}`;
 }
+
+/** Basis points -> percentage text: 1000 -> "10%", 650 -> "6.5%", 25 -> "0.25%" */
+export function formatPct(bp: number | string | null | undefined): string {
+  const n = Number(bp ?? 0) / 100;
+  return `${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}%`;
+}
+
+/** "10", "6.5", "6,5%" -> basis points (integer). Returns null for invalid input. */
+export function parsePctToBp(input: string | null | undefined): number | null {
+  if (input == null) return null;
+  const cleaned = String(input).replace("%", "").replace(",", ".").trim();
+  if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null;
+  const [whole, frac = ""] = cleaned.split(".");
+  return Number(whole) * 100 + Number(frac.padEnd(2, "0"));
+}

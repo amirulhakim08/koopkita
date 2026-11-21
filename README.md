@@ -4,7 +4,7 @@ Internal cooperative management PWA for **Koperasi Industri Tani Agro Pelanconga
 
 Interface language: Bahasa Melayu · Currency: MYR (stored as integer sen) · Timezone: Asia/Kuala_Lumpur
 
-V1 covers membership registration and approval, share capital, Qurban campaigns and cattle slot allocation, Qurban sales with payment verification, the commission engine (including the full-cattle rule), manual commission payout tracking, dashboards, notifications, CSV reports and audit logs.
+V1 covers membership registration and approval, share capital, cooperative investment projects (Projek: configurable funding rules, payment verification, profit declarations with automatic profit sharing, dividend withdrawals and capital returns), the member Wallet, the members' own business tools (Bisnes Saya: quotations, invoices, receipts), cooperative finances (Kewangan), dashboards, notifications, CSV reports and audit logs. The earlier Qurban and commission modules were retired in migration 000018 (their data was trial data only).
 
 ---
 
@@ -35,13 +35,13 @@ Browser ──(session cookie)──▶ Next.js server components / server actio
 - **The database enforces the rules, not the UI.** Client roles (`anon`, `authenticated`) have **no** INSERT/UPDATE/DELETE privileges on any table. The one exception: a member may update a few non-sensitive columns of their own profile (column-level grants). Every other write goes through a `SECURITY DEFINER` function in `supabase/migrations/…_functions.sql`. Each function checks the caller's role and status, MFA level, input, idempotency key and rate limit, takes the row locks it needs, and writes an audit log entry.
 - **RLS:** members can read only their own rows. Super Admins can read everything, and only with MFA (AAL2) when `admin_mfa_required` is on (the default).
 - **The web app never uses the service-role key at runtime.** Every request runs as the signed-in user. The service-role key is used only by `scripts/provision-super-admin.mjs`.
-- **Append-only financial history.** Triggers block `UPDATE`, `DELETE` and `TRUNCATE` on the commission ledger, payouts, payout items and audit logs, and they apply to every role, including `postgres` and `service_role`. Share transactions and payment submissions can move from `pending` to a final status exactly once. Corrections are made with adjustment or reversal entries.
+- **Append-only financial history.** Triggers block `UPDATE`, `DELETE` and `TRUNCATE` on profit allocations, capital returns, the cash book and audit logs, and guard the status of contributions, declarations and withdrawals, and they apply to every role, including `postgres` and `service_role`. Share transactions and project contributions can move from `pending` to a final status exactly once. Corrections are made with adjustment or reversal entries.
 - **Money** is stored as `bigint` sen everywhere. The UI shows `RM 1,234.56` and dates as `dd/mm/yyyy` (Malaysia time).
-- **Concurrency:** slot allocation locks the campaign row (`SELECT … FOR UPDATE`), so concurrent bookings are serialised and overselling cannot happen. Unique constraints on `(cattle_id, slot_no)`, on `slot_no BETWEEN 1 AND 7` and on participant `slot_id` back this up.
-- **Idempotency:** submissions carry a per-form UUID `idempotency_key`. Commission entries have a unique `source_key` (`std:<sale>`, `fci:<cattle>:<member>:<n>`, `rev:<entry>`), so approving a sale again cannot create duplicate commission.
+- **Concurrency:** every contribution and approval locks the project row (`SELECT … FOR UPDATE`), so approved plus pending contributions can never exceed the target. Withdrawal requests lock the member's profile row, so the same dividend cannot be requested twice.
+- **Idempotency:** submissions carry a per-form UUID `idempotency_key`. Repeated approvals, confirmations and payment records are no-ops, and allocations are unique per declaration and member.
 - **Files:** receipts and payout proofs go into the private buckets `receipts` and `payout-proofs` (max 5 MB; JPG, PNG, WEBP or PDF). Files are uploaded straight to Storage under `<user_id>/<uuid>.<ext>`, and Storage RLS restricts that folder to its owner. Files are viewed only through `/api/fail`, which creates a 60-second signed URL using the caller's own session.
 - **Privacy (Akta PDP 2010):** IC numbers and bank details live only in `profiles`, protected by RLS. The sign-up trigger removes them from auth metadata, which is embedded in JWTs. IC numbers are masked in member views and exports. Audit logs record which fields changed, not their values. Personal-data exports are rate-limited and audited. The service worker never caches authenticated pages or API responses.
-- **Other protections:** security headers (`X-Frame-Options: DENY`, `nosniff`, HSTS, no `X-Powered-By`). Login and registration have an in-memory throttle on top of Supabase Auth's own limits. Database-level rate limits apply to financial submissions, sale creation, announcements and exports. Duplicate payments are detected by bank reference across share and Qurban payments, and by same amount and date for the same member; matches are flagged for review rather than silently rejected.
+- **Other protections:** security headers (`X-Frame-Options: DENY`, `nosniff`, HSTS, no `X-Powered-By`). Login and registration have an in-memory throttle on top of Supabase Auth's own limits. Database-level rate limits apply to financial submissions, project creation, withdrawal requests, announcements and exports. Duplicate payments are detected by bank reference across share and project payments, and by same amount and date for the same member; matches are flagged for review rather than silently rejected.
 
 ### Business rules implemented
 
@@ -49,15 +49,14 @@ Browser ──(session cookie)──▶ Next.js server components / server actio
 | --- | --- |
 | Only approved share transactions count towards the balance | `v_share_balances`, `review_share_payment` |
 | Share minimum/maximum limits are configurable | `system_settings`, `submit_share_payment` |
-| Each cattle has exactly 7 slots with IDs like `KITA-2027-001` | `add_cattle`, constraints |
-| Auto-allocation: one cattle when the order fits (fullest first), otherwise fill partly used cattle first; admin can override | `app_private.allocate_slots`, `admin_reassign_slot` |
-| Reservations expire after N hours (default 48) without payment proof; sales already under review never auto-expire | `expire_reservations`, pg_cron every 15 minutes plus lazy expiry |
-| Partial payments are recorded; approval (and commission) only when verified payments ≥ total | `submit_sale_payment`, `approve_qurban_sale` |
-| RM40 per approved share | `generate_commission` (`standard` entry) |
-| 7 shares of the same cattle by the same member = RM300 total (RM280 standard + RM20 `full_cattle_incentive` entry, a replacement amount, not a bonus) | `generate_commission` |
-| Cancelling an approved sale reverses its commission and any dependent full-cattle incentive | `cancel_qurban_sale`, `reverse_ledger_entry` |
-| A payout cannot be recorded until the admin confirms the bank transfer; partial payouts and payout reversals supported | `record_commission_payout`, `reverse_commission_payout` |
-| Segregation of duties: admins cannot approve their own application, sale or share payment, or pay themselves | function checks |
+| Project contributions are multiples of the project's step; a member's total reaches the minimum and stays within the per-member maximum | `join_project` |
+| Publishing requires terms, risk disclosure and a reachable target (minimum, target and maximum are multiples of the step) | `publish_project` |
+| Only approved contributions count as capital; approved + pending never exceed the target; reaching the target sets the project to Penuh | `join_project`, `review_project_participation` |
+| Default cooperative share = the part of the declared rate above 6%, at most 1 percentage point (10% → 9/1, 6.5% → 6/0.5, 5% → 5/0); editable per declaration before confirmation | `app_private.default_coop_rate`, `save_profit_declaration` |
+| Charges (e.g. admin fee) are deducted before the split; allocations are integer sen by largest remainder and always add up | `app_private.compute_allocations`, `confirm_profit_declaration` |
+| Dividends become withdrawable only after the money is received; withdrawals reserve the amount; rejection or cancellation releases it; payment needs the treasurer's receipt | `available_dividend`, `request_dividend_withdrawal`, `record_withdrawal_payment` |
+| Capital returns and refunds are separate from dividends and never exceed a member's capital | `record_capital_returns` |
+| Segregation of duties: admins cannot approve their own application, share payment, project contribution or withdrawal, or pay themselves | function checks |
 
 ---
 
@@ -74,7 +73,7 @@ src/
     auth/confirm          email verification / recovery callback
     manifest.ts, offline/ PWA
   components/             shell, forms, UI primitives
-  features/               server actions + feature UI (auth, members, shares, qurban, commission, reports …)
+  features/               server actions + feature UI (auth, members, shares, projects, business, finance, reports …)
   lib/                    supabase clients, auth guards, env validation, formatting, validation, csv
   types/                  row types
   proxy.ts                session refresh + optimistic redirect
@@ -126,13 +125,13 @@ npx supabase db reset
 npm run test:unit
 ```
 
-Runs the commission calculator, money and date formatting, validation and CSV tests.
+Runs the project amount and profit-sharing rules, money and date formatting, validation and CSV tests.
 
 ```bash
 npm run test:integration
 ```
 
-Runs the real migrations on PostgreSQL and tests RLS, the commission engine, concurrency and immutability. It needs a PostgreSQL server; set `TEST_DATABASE_URL` (default `postgres://postgres:postgres@localhost:5432/postgres`). The suite creates and drops `koopkita_*` databases on that server.
+Runs the real migrations on PostgreSQL and tests RLS, project funding limits, profit sharing, withdrawals, concurrency and immutability. It needs a PostgreSQL server; set `TEST_DATABASE_URL` (default `postgres://postgres:postgres@localhost:5432/postgres`). The suite creates and drops `koopkita_*` databases on that server.
 
 ```bash
 npm run build && npm run start
@@ -142,7 +141,7 @@ npm run build && npm run start
 npm run test:e2e
 ```
 
-E2E needs `npx supabase start` and a production build running. If you start the server yourself, run it as `AUTH_RATE_LIMIT_MULTIPLIER=50 npm run start`; otherwise the login throttle trips during the suite. Never set this variable in production. The tests cover sign-up, email verification, approval, shares, a sale through to commission and payout, real TOTP MFA, exports, PWA and mobile layout.
+E2E needs `npx supabase start` and a production build running. If you start the server yourself, run it as `AUTH_RATE_LIMIT_MULTIPLIER=50 npm run start`; otherwise the login throttle trips during the suite. Never set this variable in production. The tests cover sign-up, email verification, approval, shares, a project from creation through a 10% profit declaration to a paid dividend withdrawal, Bisnes Saya documents, real TOTP MFA, exports, PWA and mobile layout.
 
 The required test cases from the specification map to `tests/integration/business-rules.test.ts` (tests are numbered `#1`–`#17`), with UI-level coverage in `tests/e2e`.
 
@@ -186,6 +185,6 @@ The required test cases from the specification map to `tests/integration/busines
 
 ## Operations notes
 
-- Corrections: share capital is corrected with **Pelarasan** in Modal Saham; commission is corrected by cancelling the sale (automatic reversal entries); payouts are corrected by reversing them (**Balikkan**).
-- Refunds of customer money for rejected or cancelled sales happen outside the system. The verified amounts are recorded in the audit log entry.
+- Corrections: share capital is corrected with **Pelarasan** in Modal Saham; a confirmed profit declaration is voided with a reason (only while none of it has been withdrawn) and declared again; capital returns are reversed (**Balikkan**).
+- Investing, collecting profit and paying members happen outside the app (the treasurer); the Super Admin records each step with references and receipts.
 - Data retention: profiles and financial records are never hard-deleted (financial record-keeping obligations). Anonymising a departed member's personal data is a planned admin procedure (see PROGRESS.md).

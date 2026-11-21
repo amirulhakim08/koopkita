@@ -55,7 +55,7 @@ test("register → verify email → pending → admin approval → member dashbo
   await login(page, { email, password });
   await expect(page).toHaveURL(/\/ahli$/);
   await expect(page.getByText(/KITA-\d{4}/).first()).toBeVisible();
-  await expect(page.getByRole("link", { name: "Tambah Jualan Korban" }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Lihat Projek" }).first()).toBeVisible();
   // and still cannot open the admin panel
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/ahli$/);

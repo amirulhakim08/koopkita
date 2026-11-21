@@ -16,7 +16,7 @@ export default async function ProfilePage() {
   const { profile: p } = await requireActiveMember();
   return (
     <>
-      <PageHeader title="Profil saya" description="Kemas kini maklumat hubungan dan akaun bank untuk bayaran komisen." />
+      <PageHeader title="Profil saya" description="Kemas kini maklumat hubungan dan akaun bank untuk bayaran dividen." />
       <div className="grid gap-6 lg:grid-cols-3">
         <Card>
           <CardHeader><CardTitle>Keahlian</CardTitle></CardHeader>
@@ -34,7 +34,7 @@ export default async function ProfilePage() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Maklumat peribadi</CardTitle>
-            <CardDescription>Maklumat ini hanya boleh dilihat oleh anda dan Super Admin. Akaun bank yang lengkap dan sah diperlukan untuk memohon bayaran komisen.</CardDescription>
+            <CardDescription>Maklumat ini hanya boleh dilihat oleh anda dan Super Admin. Akaun bank yang lengkap dan sah diperlukan untuk memohon pengeluaran dividen.</CardDescription>
           </CardHeader>
           <CardContent>
             <ActionForm action={updateOwnProfileAction} className="space-y-4">

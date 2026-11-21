@@ -22,7 +22,7 @@ export default async function AnnouncementPage() {
       <PageHeader title="Notifikasi ahli" description="Hantar notifikasi dalam aplikasi kepada semua ahli aktif atau ahli yang dipilih." />
       <div className="grid gap-6 lg:grid-cols-5">
         <Card className="lg:col-span-3">
-          <CardHeader><CardTitle>Notifikasi baharu</CardTitle><CardDescription>Contoh: pembukaan kempen korban, tarikh penyembelihan, mesyuarat agung, peringatan bayaran.</CardDescription></CardHeader>
+          <CardHeader><CardTitle>Notifikasi baharu</CardTitle><CardDescription>Contoh: pembukaan projek baharu, mesyuarat agung, peringatan bayaran.</CardDescription></CardHeader>
           <CardContent><AnnouncementForm members={members ?? []} /></CardContent>
         </Card>
         <Card className="lg:col-span-2">

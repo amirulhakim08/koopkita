@@ -90,62 +90,6 @@ export const sharePaymentSchema = z.object({
   idempotency_key: idempotencyKeySchema,
 });
 
-export const participantSchema = z.object({
-  participant_name: z.preprocess(trim, z.string().min(2, "Nama peserta diperlukan").max(150)),
-  qurban_type: z.enum(["korban_sunat", "korban_nazar", "aqiqah"]).default("korban_sunat"),
-  on_behalf_of: z.preprocess(emptyToUndef, z.string().max(150).optional()),
-});
-
-export const saleSchema = z
-  .object({
-    campaign_id: z.string().uuid(),
-    share_count: z.coerce.number().int().min(1, "Sekurang-kurangnya 1 bahagian").max(70),
-    buyer_full_name: z.preprocess(trim, z.string().min(3, "Nama pembeli diperlukan").max(150)),
-    buyer_phone: phoneSchema,
-    buyer_email: z.preprocess(emptyToUndef, z.email("E-mel tidak sah").optional()),
-    buyer_address: z.preprocess(emptyToUndef, z.string().max(500).optional()),
-    notes: z.preprocess(emptyToUndef, z.string().max(1000).optional()),
-    participants: z.array(participantSchema),
-    idempotency_key: idempotencyKeySchema,
-  })
-  .refine((d) => d.participants.length === d.share_count, {
-    path: ["participants"],
-    message: "Nama peserta diperlukan bagi setiap bahagian",
-  });
-
-export const salePaymentSchema = sharePaymentSchema.extend({ sale_id: z.string().uuid() });
-
-export const campaignSchema = z
-  .object({
-    id: z.preprocess(emptyToUndef, z.string().uuid().optional()),
-    name: z.preprocess(trim, z.string().min(3, "Nama kempen diperlukan").max(150)),
-    year: z.coerce.number().int().min(2020).max(2100),
-    start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarikh tidak sah"),
-    closing_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarikh tidak sah"),
-    price_per_share: moneySchema,
-    commission_per_share: z.preprocess((v) => (typeof v === "string" ? parseRMToSen(v) : v), z.number().int().min(0)),
-    full_cattle_commission: z.preprocess((v) => (typeof v === "string" ? parseRMToSen(v) : v), z.number().int().min(0)),
-    reservation_expiry_hours: z.coerce.number().int().min(1).max(720),
-    description: z.preprocess(emptyToUndef, z.string().max(2000).optional()),
-  })
-  .refine((d) => d.closing_date >= d.start_date, { path: ["closing_date"], message: "Tarikh tutup mesti selepas tarikh mula" })
-  .refine((d) => d.full_cattle_commission >= d.commission_per_share * 7, {
-    path: ["full_cattle_commission"],
-    message: "Komisen seekor penuh tidak boleh kurang daripada 7 × komisen sebahagian",
-  });
-
-export const payoutSchema = z.object({
-  member_id: z.string().uuid(),
-  amount: moneySchema,
-  payment_date: pastDateSchema,
-  transaction_ref: transactionRefSchema,
-  proof_path: z.preprocess(emptyToUndef, receiptPathSchema.optional()),
-  notes: z.preprocess(emptyToUndef, z.string().max(1000).optional()),
-  bank_transfer_confirmed: z.literal("on", { message: "Sahkan pemindahan bank telah dibuat" }),
-  entry_ids: z.array(z.string().uuid()).optional(),
-  idempotency_key: idempotencyKeySchema,
-});
-
 export const reasonSchema = z.preprocess(trim, z.string().min(3, "Sila nyatakan sebab").max(1000));
 
 export const ALLOWED_UPLOAD_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"] as const;
