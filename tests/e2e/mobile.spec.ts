@@ -34,7 +34,7 @@ const pageWidthOverflow = (page: import("@playwright/test").Page) =>
 
 test("member pages fit the phone screen width", async ({ page }) => {
   await login(page, MEMBER1);
-  for (const url of ["/ahli/saham", "/ahli/projek", "/ahli/wallet", "/ahli/bisnes?tab=resit", "/ahli/bisnes/resit/baharu"]) {
+  for (const url of ["/ahli/saham", "/ahli/projek", "/ahli/wallet", "/ahli/mesyuarat", "/ahli/bisnes?tab=resit", "/ahli/bisnes/resit/baharu"]) {
     await page.goto(url);
     await page.waitForLoadState("networkidle");
     expect(await pageWidthOverflow(page), url).toBeLessThanOrEqual(0);
@@ -43,7 +43,7 @@ test("member pages fit the phone screen width", async ({ page }) => {
 
 test("admin pages fit the phone screen width", async ({ page }) => {
   await login(page, ADMIN);
-  for (const url of ["/admin/projek", "/admin/projek/pengeluaran", "/admin/kewangan", "/admin/saham", "/admin/bisnes"]) {
+  for (const url of ["/admin/projek", "/admin/projek/pengeluaran", "/admin/mesyuarat", "/admin/mesyuarat/baharu", "/admin/kewangan", "/admin/saham", "/admin/bisnes"]) {
     await page.goto(url, { waitUntil: "load" });
     await page.waitForTimeout(800);
     expect(await pageWidthOverflow(page), url).toBeLessThanOrEqual(0);

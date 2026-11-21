@@ -4,13 +4,13 @@ import { usePathname } from "next/navigation";
 import * as React from "react";
 import { createPortal } from "react-dom";
 import {
-  Bell, Briefcase, Landmark, Store, FileSpreadsheet, Home, LayoutDashboard, Megaphone, Menu, Coins, Receipt, Settings, ShieldCheck, User, Users, Wallet, X,
+  Bell, Briefcase, CalendarDays, Landmark, Store, FileSpreadsheet, Home, LayoutDashboard, Megaphone, Menu, Coins, Receipt, Settings, ShieldCheck, User, Users, Wallet, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavItem } from "./nav-config";
 
 const ICONS = {
-  home: Home, briefcase: Briefcase, coins: Coins, wallet: Wallet, bell: Bell, user: User, dashboard: LayoutDashboard,
+  home: Home, briefcase: Briefcase, calendar: CalendarDays, coins: Coins, wallet: Wallet, bell: Bell, user: User, dashboard: LayoutDashboard,
   users: Users, receipt: Receipt, file: FileSpreadsheet, megaphone: Megaphone, shield: ShieldCheck, settings: Settings, landmark: Landmark, store: Store,
 } as const;
 

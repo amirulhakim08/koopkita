@@ -10,6 +10,7 @@ export const MEMBER_NAV: NavItem[] = [
   { href: "/ahli/bisnes", label: "Bisnes Saya", icon: "store", mobile: true, mobileLabel: "Bisnes" },
   { href: "/ahli/wallet", label: "Wallet", icon: "wallet", mobile: true },
   { href: "/ahli/saham", label: "Syer", icon: "coins", mobile: true },
+  { href: "/ahli/mesyuarat", label: "Mesyuarat", icon: "calendar" },
   { href: "/ahli/notifikasi", label: "Notifikasi", icon: "bell" },
   { href: "/ahli/profil", label: "Profil", icon: "user" },
 ];
@@ -20,6 +21,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin/saham", label: "Modal Syer", icon: "coins" },
   { href: "/admin/projek", label: "Projek", icon: "briefcase", mobile: true },
   { href: "/admin/kewangan", label: "Kewangan", icon: "landmark", mobile: true },
+  { href: "/admin/mesyuarat", label: "Mesyuarat", icon: "calendar", mobile: true },
   { href: "/admin/bisnes", label: "Bisnes Ahli", icon: "store" },
   { href: "/admin/laporan", label: "Laporan", icon: "file" },
   { href: "/admin/pengumuman", label: "Notifikasi Ahli", icon: "megaphone" },

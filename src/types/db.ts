@@ -193,6 +193,43 @@ export interface MemberProjectWallet {
   available_sen: number;
 }
 
+export type MeetingStatus = "draft" | "scheduled" | "ongoing" | "completed" | "cancelled";
+
+export interface Meeting {
+  id: string;
+  meeting_no: string;
+  title: string;
+  agenda: string | null;
+  meeting_date: string;
+  start_time: string;
+  end_time: string | null;
+  mode: "physical" | "online" | "hybrid";
+  location: string | null;
+  online_url: string | null;
+  audience: "all" | "selected";
+  status: MeetingStatus;
+  attendance_open: boolean;
+  attendance_opened_at: string | null;
+  ended_at: string | null;
+  attendance_closes_at: string | null;
+  finalized_at: string | null;
+  published_at: string | null;
+  cancelled_at: string | null;
+  cancel_reason: string | null;
+  created_at: string;
+}
+
+export interface MeetingInvitee {
+  meeting_id: string;
+  member_id: string;
+  status: "pending" | "present" | "absent" | "excused";
+  confirmed_at: string | null;
+  method: "code" | "manual" | null;
+  note: string | null;
+  invited_at: string;
+  updated_at: string;
+}
+
 export interface Notification {
   id: string;
   type: string;

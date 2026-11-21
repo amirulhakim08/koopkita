@@ -8,25 +8,38 @@ import { StatusBadge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/empty-state";
 import { requireActiveMember } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { formatDateTime, formatRM } from "@/lib/format";
+import { formatDateTime, formatRM, todayKL } from "@/lib/format";
 import { MEMBER_STATUS } from "@/lib/labels";
 import { ProjectCard } from "@/features/projects/project-card";
-import type { Project, ProjectProgress } from "@/types/db";
+import { MeetingCard } from "@/features/meetings/meeting-card";
+import { meetingPriority } from "@/features/meetings/meeting-utils";
+import type { Meeting, MeetingInvitee, Project, ProjectProgress } from "@/types/db";
 
 export const metadata = { title: "Utama" };
 
 type Stats = Record<string, number>;
 
 export default async function MemberDashboard() {
-  const { profile } = await requireActiveMember();
+  const { profile, userId } = await requireActiveMember();
   const supabase = await createClient();
-  const [{ data: stats }, { data: business }, { data: projects }, { data: progress }, { data: notifications }] = await Promise.all([
+  const today = todayKL();
+  await supabase.rpc("refresh_meetings");
+  const [{ data: stats }, { data: business }, { data: projects }, { data: progress }, { data: notifications }, { data: meetings }, { data: invites }] = await Promise.all([
     supabase.rpc("member_dashboard_stats"),
     supabase.rpc("my_business_performance"),
     supabase.from("projects").select("*").eq("status", "open").order("created_at", { ascending: false }).limit(2),
     supabase.rpc("project_progress"),
     supabase.from("notifications").select("id, title, body, link, read_at, created_at").order("created_at", { ascending: false }).limit(5),
+    supabase.from("meetings").select("*").or(`status.eq.ongoing,and(status.eq.scheduled,meeting_date.gte.${today})`),
+    supabase.from("meeting_invitees").select("*").eq("member_id", userId),
   ]);
+  // ongoing first, then today's, otherwise only the nearest upcoming meeting
+  const sortedMeetings = ((meetings ?? []) as Meeting[]).sort((a, b) => {
+    const [ra, ka] = meetingPriority(a, today); const [rb, kb] = meetingPriority(b, today); return ra - rb || ka.localeCompare(kb);
+  });
+  const nowMeetings = sortedMeetings.filter((m) => m.status === "ongoing" || m.meeting_date === today);
+  const showMeetings = nowMeetings.length ? nowMeetings : sortedMeetings.slice(0, 1);
+  const inviteBy = new Map(((invites ?? []) as MeetingInvitee[]).map((i) => [i.meeting_id, i]));
   const s = (stats ?? {}) as Stats;
   const b = (business ?? {}) as Stats & { has_business?: boolean };
   const byId = new Map(((progress ?? []) as ProjectProgress[]).map((p) => [p.project_id, p]));
@@ -43,6 +56,18 @@ export default async function MemberDashboard() {
           </>
         }
       />
+
+      {showMeetings.length > 0 && (
+        <section className="mb-6" aria-label="Mesyuarat">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Mesyuarat</h2>
+            <Link href="/ahli/mesyuarat" className="text-sm font-medium text-primary hover:underline">Semua mesyuarat</Link>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {showMeetings.map((m) => <MeetingCard key={m.id} meeting={m} invite={inviteBy.get(m.id)} today={today} />)}
+          </div>
+        </section>
+      )}
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard emphasis label="Modal syer saya" value={formatRM(s.approved_share_sen)} icon={Coins}
