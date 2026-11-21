@@ -93,7 +93,7 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
   - **Withdrawals:** member requests reserve the amount; admin approves, the treasurer transfers outside the app, the admin records reference and receipt. Capital returns and refunds are separate.
   - **Wallet:** Modal Syer, Prestasi Bisnes, Wallet Projek. Kewangan cash book includes all project flows; new CSV reports.
   - **Removed:** Korban and Komisen pages, functions and tables (production held trial data only: 2 campaigns, 20 cattle; the Super Admin confirmed deletion).
-  - Tests: unit 29/29, integration 74/74 (27 new project tests), e2e 27/27.
+  - Tests: unit 27/27, integration 74/74 (27 new project tests), e2e 27/27.
 - **2026-11-20: quotations (Sebut Harga), loading screen, phone-width fixes (migration 000017, applied; production fingerprint matches local).**
   - **Sebut Harga:**
     - Draft → send (`QT-YYMMDDNNN`) → accepted / rejected → **Tukar ke Invois**, which copies items, scope of work and terms into an invoice draft.
