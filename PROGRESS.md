@@ -71,7 +71,7 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
 
 ## Phase 7 — Deployment ✅ (live, iterating)
 - ✅ Supabase project **mydevelopment** (`pikifjnwjpzoeqhorvpe`, ap-southeast-1 Singapore), used for KoopKITA only.
-- ✅ Migrations 000001–000019 applied (schema only, **no seed data**). After each one, the full schema fingerprint (functions, columns, constraints, policies, triggers, grants) matched the tested local stack.
+- ✅ Migrations 000001–000020 applied (schema only, **no seed data**). After each one, the full schema fingerprint (functions, columns, constraints, policies, triggers, grants) matched the tested local stack.
 - ✅ Private buckets `receipts`, `payout-proofs`, `business-proofs`; public `business-logos`. The pg_cron job `koopkita-expire-reservations` was removed with the Qurban module (000018); `koopkita-finalize-meetings` (every 5 min) closes meeting grace periods (000019).
 - ✅ Vercel project `koopkita` deployed from `main` at https://koopkita.vercel.app with the 3 public env vars.
 - ✅ First Super Admin provisioned (KITA-0001).
@@ -87,6 +87,7 @@ Legend: ✅ implemented and tested · 🟡 implemented, partially tested · ⏳ 
   - Enter the official cooperative bank account and cooperative details (reg. no, address, logo) in Tetapan
 
 ## Change log
+- **2026-11-21: late members are invited to running "all active members" meetings (migration 000020, applied after PR #15 merged; production fingerprint matches local).** A member approved while such a meeting is scheduled, ongoing or in its grace period is added, notified and can confirm with the code. Tests: integration 87/87.
 - **2026-11-21: Mesyuarat & kehadiran (migration 000019, applied after PR #14 merged; production fingerprint matches local, including RLS flags and the cron job).**
   - Super Admin: physical / online / hybrid meetings (https links only), all active members or selected members, publish with notifications, open / pause the attendance session, end the meeting, cancel, manual corrections with a mandatory reason (audited).
   - Members: meeting card on Utama (ongoing → today → next), detail and history. "Sertai Mesyuarat" only opens the link; attendance needs the 5-digit code (kept in app_private, checked in the database, 5 wrong attempts → 10-minute lock).
